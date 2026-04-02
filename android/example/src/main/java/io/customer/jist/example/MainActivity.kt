@@ -123,7 +123,8 @@ fun ExampleScreen(
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = if (isDarkMode) Color(0xFF2A2A2C) else Color(0xFFE8E8ED)
-                            )
+                            ),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text(

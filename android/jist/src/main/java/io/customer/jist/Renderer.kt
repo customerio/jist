@@ -1,12 +1,11 @@
 package io.customer.jist
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -318,31 +317,34 @@ private fun JistButtonView(
     val radius = resolver.resolveFloat("button", node.variant, "border", "radius", fallback = 6f)
     val borderWidth = resolver.resolveFloat("button", node.variant, "border", "width", fallback = 0f)
     val borderColor = resolver.resolveColor("button", node.variant, "border", "color", fallback = Color.Transparent)
+    val shape = RoundedCornerShape(radius.dp)
 
-    Button(
-        onClick = {
-            onAction?.invoke(
-                JistActionEvent(
-                    component = "button",
-                    name = node.name,
-                    data = data[node.name],
-                    meta = node.meta
-                )
-            )
-        },
-        colors = ButtonDefaults.buttonColors(
-            containerColor = bgColor,
-            contentColor = textColor
-        ),
-        shape = RoundedCornerShape(radius.dp),
-        contentPadding = PaddingValues(
-            start = resolver.resolveFloat("button", node.variant, "padding", "left", fallback = 16f).dp,
-            top = resolver.resolveFloat("button", node.variant, "padding", "top", fallback = 8f).dp,
-            end = resolver.resolveFloat("button", node.variant, "padding", "right", fallback = 16f).dp,
-            bottom = resolver.resolveFloat("button", node.variant, "padding", "bottom", fallback = 8f).dp
-        ),
-        border = if (borderWidth > 0) BorderStroke(borderWidth.dp, borderColor) else null,
+    Box(
+        contentAlignment = Alignment.Center,
         modifier = modifier
+            .clip(shape)
+            .background(bgColor)
+            .then(
+                if (borderWidth > 0) Modifier.border(borderWidth.dp, borderColor, shape)
+                else Modifier
+            )
+            .clickable {
+                onAction?.invoke(
+                    JistActionEvent(
+                        component = "button",
+                        name = node.name,
+                        data = data[node.name],
+                        meta = node.meta
+                    )
+                )
+            }
+            .padding(
+                start = resolver.resolveFloat("button", node.variant, "padding", "left", fallback = 16f).dp,
+                top = resolver.resolveFloat("button", node.variant, "padding", "top", fallback = 8f).dp,
+                end = resolver.resolveFloat("button", node.variant, "padding", "right", fallback = 16f).dp,
+                bottom = resolver.resolveFloat("button", node.variant, "padding", "bottom", fallback = 8f).dp
+            )
+            .semantics { role = Role.Button }
     ) {
         Text(
             text = label,
@@ -351,7 +353,7 @@ private fun JistButtonView(
                 fontWeight = JistThemeResolver.fontWeight(
                     resolver.resolveFloat("button", node.variant, "text", "fontWeight", fallback = 500f)
                 ),
-                color = resolver.resolveColor("button", node.variant, "text", "color", fallback = Color.White)
+                color = textColor
             )
         )
     }
