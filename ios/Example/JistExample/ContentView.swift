@@ -1,3 +1,4 @@
+import ActivityKit
 import SwiftUI
 import Jist
 
@@ -8,8 +9,17 @@ struct ContentView: View {
 
     @State private var isDarkMode = false
     @State private var actionLog: [String] = []
+    @State private var currentActivity: Activity<JistActivityAttributes>?
+    @State private var progressTask: Task<Void, Never>?
 
     private let templateOrder = ["basic", "image", "cta", "action"]
+
+    private let deliverySteps: [(title: String, body: String, step: String, eta: String)] = [
+        ("Order Confirmed", "Your order #1234 has been confirmed.", "1 of 4", "ETA 30 min"),
+        ("Preparing", "The kitchen is preparing your order.", "2 of 4", "ETA 20 min"),
+        ("Out for Delivery", "Your driver is on the way!", "3 of 4", "ETA 5 min"),
+        ("Delivered", "Your order has been delivered. Enjoy!", "4 of 4", "")
+    ]
 
     var body: some View {
         NavigationView {
@@ -48,11 +58,7 @@ struct ContentView: View {
             mode: isDarkMode ? .dark : .light,
             formatDate: { iso, _ in formatRelative(iso) },
             onAction: { event in
-                var parts = ["\(event.component) \"\(event.name)\""]
-                if let meta = event.meta {
-                    parts.append("meta: \(meta)")
-                }
-                actionLog.insert(parts.joined(separator: " — "), at: 0)
+                handleAction(event)
             }
         )
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -61,6 +67,89 @@ struct ContentView: View {
         .cornerRadius(12)
         .shadow(color: .black.opacity(isDarkMode ? 0 : 0.08), radius: 4, y: 2)
     }
+
+    // MARK: - Actions
+
+    private func handleAction(_ event: JistActionEvent) {
+        var parts = ["\(event.component) \"\(event.name)\""]
+        if let meta = event.meta {
+            parts.append("meta: \(meta)")
+        }
+        actionLog.insert(parts.joined(separator: " — "), at: 0)
+
+        if event.component == "button" && event.name == "cta" {
+            startLiveActivity()
+        }
+    }
+
+    // MARK: - Live Activity
+
+    private func dataForStep(_ step: (title: String, body: String, step: String, eta: String)) -> [String: JistValue] {
+        var data: [String: JistValue] = [
+            "title": .string(step.title),
+            "body": .string(step.body),
+            "step": .string(step.step),
+            "timestamp": .string(ISO8601DateFormatter().string(from: Date()))
+        ]
+        if !step.eta.isEmpty {
+            data["eta"] = .string(step.eta)
+        }
+        return data
+    }
+
+    private func startLiveActivity() {
+        guard currentActivity == nil,
+              let template = templates["liveActivity"] else { return }
+
+        let encoder = JSONEncoder()
+        guard let templateJSON = try? String(data: encoder.encode(template), encoding: .utf8),
+              let themeJSON = try? String(data: encoder.encode(theme), encoding: .utf8) else { return }
+
+        let data = dataForStep(deliverySteps[0])
+        guard let dataJSON = try? String(data: encoder.encode(data), encoding: .utf8) else { return }
+
+        let attributes = JistActivityAttributes(templateJSON: templateJSON, themeJSON: themeJSON)
+        let state = JistActivityAttributes.ContentState(dataJSON: dataJSON)
+
+        do {
+            let activity = try Activity.request(
+                attributes: attributes,
+                content: .init(state: state, staleDate: nil)
+            )
+            currentActivity = activity
+            actionLog.insert("Live Activity started", at: 0)
+
+            progressTask = Task {
+                for i in 1..<deliverySteps.count {
+                    try? await Task.sleep(for: .seconds(5))
+                    if Task.isCancelled { return }
+
+                    let stepData = dataForStep(deliverySteps[i])
+                    guard let json = try? String(data: JSONEncoder().encode(stepData), encoding: .utf8) else { continue }
+                    let newState = JistActivityAttributes.ContentState(dataJSON: json)
+                    await activity.update(ActivityContent(state: newState, staleDate: nil))
+
+                    await MainActor.run {
+                        actionLog.insert("Live Activity → \(deliverySteps[i].title)", at: 0)
+                    }
+                }
+
+                try? await Task.sleep(for: .seconds(5))
+                if Task.isCancelled { return }
+
+                await activity.end(nil, dismissalPolicy: .immediate)
+                await MainActor.run {
+                    currentActivity = nil
+                    progressTask = nil
+                    actionLog.insert("Live Activity ended", at: 0)
+                }
+            }
+        } catch {
+            print("Failed to start live activity: \(error)")
+        }
+    }
+
+    // MARK: - Action Log
 
     private var logView: some View {
         VStack(alignment: .leading, spacing: 6) {

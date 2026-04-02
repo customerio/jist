@@ -64,6 +64,39 @@
       ]
     }
   },
+  "liveActivity": {
+    "version": "1",
+    "root": {
+      "type": "layout",
+      "direction": "vertical",
+      "gap": 6,
+      "margin": { "top": 4, "right": 8, "bottom": 8, "left": 8 },
+      "children": [
+        {
+          "type": "layout",
+          "direction": "horizontal",
+          "align": "center",
+          "justify": "space-between",
+          "children": [
+            { "type": "heading", "name": "title", "variant": "h4" },
+            { "type": "text", "name": "step", "variant": "caption" }
+          ]
+        },
+        { "type": "text", "name": "body" },
+        {
+          "type": "layout",
+          "direction": "horizontal",
+          "align": "center",
+          "justify": "space-between",
+          "margin": { "top": 4 },
+          "children": [
+            { "type": "date", "name": "timestamp" },
+            { "type": "text", "name": "eta" }
+          ]
+        }
+      ]
+    }
+  },
   "action": {
     "version": "1",
     "root": {

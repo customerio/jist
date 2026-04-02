@@ -2,7 +2,7 @@ name: JistExample
 options:
   bundleIdPrefix: com.customerio.jist
   deploymentTarget:
-    iOS: "15.0"
+    iOS: "16.2"
 settings:
   base:
     CODE_SIGN_IDENTITY: ""
@@ -14,8 +14,31 @@ targets:
     platform: iOS
     sources:
       - path: JistExample
+      - path: Shared
     dependencies:
       - package: Jist
+      - target: JistLiveActivity
+    info:
+      path: JistExample/Info.plist
+      properties:
+        NSSupportsLiveActivities: true
+        UILaunchScreen: {}
+  JistLiveActivity:
+    type: app-extension
+    platform: iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.customerio.jist.JistExample.JistLiveActivity
+    sources:
+      - path: JistLiveActivity
+      - path: Shared
+    dependencies:
+      - package: Jist
+    info:
+      path: JistLiveActivity/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
 packages:
   Jist:
     path: ../
