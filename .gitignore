@@ -21,6 +21,7 @@ ios/Example/JistExample/*.json
 local.properties
 android/**/build/
 android/**/.cxx/
+android/example/src/main/res/raw/*.json
 
 # IDE
 .idea/

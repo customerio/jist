@@ -42,7 +42,7 @@ struct JistLayoutView: View {
 
     private var isVertical: Bool { node.direction == "vertical" }
     private var justify: String { node.justify ?? "start" }
-    private var isStretch: Bool { node.align == "stretch" }
+    private var isStretch: Bool { node.align == nil || node.align == "stretch" }
 
     var body: some View {
         let useSpaceBetween = justify == "space-between"
