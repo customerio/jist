@@ -1,0 +1,30 @@
+# Dependencies & environments
+node_modules/
+.venv/
+__pycache__/
+
+# Build outputs
+.build/
+build/
+DerivedData/
+
+# iOS
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+ios/Example/JistExample/*.json
+
+# Android
+*.apk
+*.aab
+.gradle/
+local.properties
+android/**/build/
+android/**/.cxx/
+
+# IDE
+.idea/
+*.swp
+*~
+.vscode/
+.DS_Store
