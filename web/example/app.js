@@ -3,9 +3,9 @@ import "../src/jist-element.js";
 // ── Load Shared Fixtures ────────────────────
 
 const [templates, data, theme] = await Promise.all([
-  fetch("../../shared/templates.json").then((r) => r.json()),
-  fetch("../../shared/data.json").then((r) => r.json()),
-  fetch("../../shared/theme.json").then((r) => r.json()),
+  fetch("shared/templates.json").then((r) => r.json()),
+  fetch("shared/data.json").then((r) => r.json()),
+  fetch("shared/theme.json").then((r) => r.json()),
 ]);
 
 // ── Date Formatter ──────────────────────────

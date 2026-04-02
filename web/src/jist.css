@@ -34,6 +34,11 @@ jist-template {
   margin-right: var(--jist-heading-margin-right, 0);
   margin-bottom: var(--jist-heading-margin-bottom, 0);
   margin-left: var(--jist-heading-margin-left, 0);
+  /* Line clamping — active when --jist-heading-text-max-lines is set */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--jist-heading-text-max-lines, none);
+  overflow: hidden;
 }
 
 .jist__heading--h2 {
