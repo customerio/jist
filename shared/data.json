@@ -1,0 +1,26 @@
+{
+  "basic": {
+    "title": "Welcome to Notifications",
+    "body": "This is your notification inbox. Important updates and action items will appear here.",
+    "timestamp": "2026-04-01T14:00:00Z"
+  },
+  "image": {
+    "title": "New Dashboard Design",
+    "body": "Check out the redesigned analytics dashboard with improved charts and faster load times.",
+    "media": "https://placehold.co/600x400/e2e8f0/475569?text=Dashboard+Preview",
+    "timestamp": "2026-04-01T08:30:00Z"
+  },
+  "cta": {
+    "title": "Action Required: Verify Email",
+    "body": "Please verify your email address to unlock all features and secure your account.",
+    "timestamp": "2026-03-31T09:15:00Z",
+    "cta": { "label": "Verify now", "url": "#verify" }
+  },
+  "action": {
+    "title": "Sarah Chen joined the team",
+    "body": "Give her a warm welcome!",
+    "avatar": "https://placehold.co/96x96/c7d2fe/4338ca?text=SC",
+    "timestamp": "2026-04-02T10:00:00Z",
+    "open": { "url": "/team/sarah-chen" }
+  }
+}

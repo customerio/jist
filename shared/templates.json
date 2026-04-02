@@ -1,0 +1,109 @@
+{
+  "$schema": "../spec/jist-template-schema.json",
+  "basic": {
+    "version": "1",
+    "root": {
+      "type": "layout",
+      "direction": "vertical",
+      "gap": 6,
+      "children": [
+        { "type": "heading", "name": "title" },
+        { "type": "text", "name": "body" },
+        { "type": "date", "name": "timestamp" }
+      ]
+    }
+  },
+  "image": {
+    "version": "1",
+    "root": {
+      "type": "layout",
+      "direction": "vertical",
+      "gap": 8,
+      "children": [
+        { "type": "heading", "name": "title" },
+        {
+          "type": "layout",
+          "direction": "vertical",
+          "margin": { "top": 4, "bottom": 4 },
+          "children": [
+            {
+              "type": "image",
+              "name": "media",
+              "width": "fill",
+              "height": 180,
+              "objectFit": "cover",
+              "borderRadius": 8
+            }
+          ]
+        },
+        { "type": "text", "name": "body" },
+        { "type": "date", "name": "timestamp" }
+      ]
+    }
+  },
+  "cta": {
+    "version": "1",
+    "root": {
+      "type": "layout",
+      "direction": "vertical",
+      "gap": 6,
+      "children": [
+        { "type": "heading", "name": "title" },
+        { "type": "text", "name": "body" },
+        {
+          "type": "layout",
+          "direction": "horizontal",
+          "align": "center",
+          "justify": "space-between",
+          "margin": { "top": 4 },
+          "children": [
+            { "type": "date", "name": "timestamp" },
+            { "type": "button", "name": "cta", "variant": "secondary" }
+          ]
+        }
+      ]
+    }
+  },
+  "action": {
+    "version": "1",
+    "root": {
+      "type": "layout",
+      "direction": "vertical",
+      "children": [
+        {
+          "type": "action",
+          "name": "open",
+          "meta": { "trackEvent": "card_click" },
+          "children": [
+            {
+              "type": "layout",
+              "direction": "horizontal",
+              "gap": 12,
+              "align": "center",
+              "children": [
+                {
+                  "type": "image",
+                  "name": "avatar",
+                  "width": 48,
+                  "height": 48,
+                  "objectFit": "cover",
+                  "borderRadius": 24
+                },
+                {
+                  "type": "layout",
+                  "direction": "vertical",
+                  "gap": 4,
+                  "children": [
+                    { "type": "heading", "name": "title", "variant": "h4" },
+                    { "type": "text", "name": "body" },
+                    { "type": "date", "name": "timestamp" }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

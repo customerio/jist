@@ -12,7 +12,7 @@ Jist is a cross-platform library for rendering JSON template trees into native U
 
 Two callbacks configure behavior:
 
-- **formatDate** — converts ISO 8601 date strings into display text
+- **formatDate** *(optional)* — converts ISO 8601 date strings into display text; receives the date string and the field name. Falls back to a platform-native locale-aware format when not provided.
 - **onAction** — receives events when interactive components are activated
 
 ### Platform Targets
@@ -546,26 +546,18 @@ If the secondary button needs a distinct dark color, define it explicitly in `mo
 | iOS | `@Environment(\.colorScheme)` | `JistView(mode: .dark)` |
 | Android | `isSystemInDarkTheme()` | `JistView(mode = JistMode.Dark)` |
 
-**Web implementation:** The theme flattener sets base custom properties on `:host` and dark overrides inside `@media (prefers-color-scheme: dark)`. The existing `var()` fallback chains handle the cascade naturally:
+**Web implementation:** The theme flattener sets `--jist-*` custom properties as inline styles on the `<jist-template>` element. Numeric values are suffixed with `px` (except unitless properties like `fontWeight`, `maxLines`, `lineHeight`). When dark mode is active, the dark overrides are flattened on top of the base values, replacing them.
+
+Mode detection uses `window.matchMedia("(prefers-color-scheme: dark)")` with a change listener for auto mode. The CSS `var()` fallback chains handle the cascade naturally:
 
 ```css
-:host {
-  --jist-button-background-color: #4F46E5;
-  --jist-button-secondary-background-color: #F4F4F6;
-}
-@media (prefers-color-scheme: dark) {
-  :host {
-    --jist-button-background-color: #6366F1;
-    /* secondary not overridden — CSS fallback chain resolves to dark base */
-  }
-}
 .jist__button--secondary {
   background: var(--jist-button-secondary-background-color,
-              var(--jist-button-background-color));
+              var(--jist-button-background-color, #4F46E5));
 }
 ```
 
-When `mode` is set explicitly, the renderer applies the dark properties directly instead of relying on the media query.
+When a dark override sets `--jist-button-background-color` but not `--jist-button-secondary-background-color`, the secondary button falls back to the dark base value.
 
 ---
 
@@ -709,7 +701,7 @@ el.template = templateObj;
 el.data = dataObj;
 el.theme = themeObj;
 el.mode = "auto"; // "auto" | "light" | "dark"
-el.formatDate = (iso) => "2 hours ago";
+el.formatDate = (iso, name) => "2 hours ago";
 el.onAction = (event) => { ... };
 ```
 
@@ -766,7 +758,7 @@ struct ContentView: View {
             template: template,
             data: ["title": "Hello", "body": "World"],
             theme: theme,
-            formatDate: { iso in "2 hours ago" },
+            formatDate: { iso, name in "2 hours ago" },
             onAction: { event in
                 print("\(event.component) \(event.name)")
             }
@@ -824,7 +816,7 @@ fun NotificationCard(template: JistTemplate, data: Map<String, Any?>) {
         template = template,
         data = data,
         theme = theme,
-        formatDate = { iso -> "2 hours ago" },
+        formatDate = { iso, name -> "2 hours ago" },
         onAction = { event ->
             Log.d("Jist", "${event.component} ${event.name}: ${event.data}")
         }
@@ -960,3 +952,31 @@ fun NotificationCard(template: JistTemplate, data: Map<String, Any?>) {
 ```
 
 This template renders identically on all three platforms — a vertical card with heading, full-width image, body text, and a bottom row containing a date and secondary button. The theme adapts to light/dark mode automatically, with only color values overridden in dark mode.
+
+---
+
+## JSON Schemas
+
+Two JSON Schema (draft-07) files validate templates and themes:
+
+| Schema | File | Purpose |
+|---|---|---|
+| Template | `jist-template-schema.json` | Validates template structure — version, root node, all component types with their properties |
+| Theme | `jist-theme-schema.json` | Validates theme configuration — style properties, variants, interaction states, color modes |
+
+Reference them in JSON files via `$schema`:
+
+```json
+{
+  "$schema": "./jist-template-schema.json",
+  "version": "1",
+  "root": { ... }
+}
+```
+
+The schemas include rich descriptions on every property, making them useful for AI agents building templates programmatically. Key design points:
+
+- **Template schema** uses `oneOf` discriminated by `type` to enforce valid node structures
+- **Theme schema** uses `additionalProperties` with `$ref` to allow arbitrary named variants while enforcing variant structure
+- Hex colors are validated via regex pattern (`#RRGGBB` or `#RRGGBBAA`)
+- Heading variants are constrained to `["h2", "h3", "h4"]`; button/text variants accept any string
