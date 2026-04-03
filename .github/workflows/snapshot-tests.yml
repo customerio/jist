@@ -19,6 +19,7 @@ concurrency:
 env:
   MACOS_RUNNER: macos-26
   UBUNTU_RUNNER: ubuntu-24.04
+  XCODE_VERSION: "26.4_Release_Candidate"
   NODE_VERSION: "20"
   JAVA_VERSION: "17"
 
@@ -30,9 +31,9 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -47,7 +48,7 @@ jobs:
 
       - name: Upload diff artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: web-snapshot-diffs
           path: web/test-results/
@@ -59,14 +60,17 @@ jobs:
       run:
         working-directory: ios
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: Select Xcode ${{ env.XCODE_VERSION }}
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
 
       - name: Run snapshot tests
         run: swift test
 
       - name: Upload diff artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ios-snapshot-diffs
           path: ios/Tests/JistTests/__Snapshots__/
@@ -78,9 +82,9 @@ jobs:
       run:
         working-directory: android
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: zulu
           java-version: ${{ env.JAVA_VERSION }}
@@ -91,7 +95,7 @@ jobs:
 
       - name: Upload diff artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: android-snapshot-diffs
           path: android/jist/build/reports/paparazzi/
