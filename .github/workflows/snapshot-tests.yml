@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      record:
+        description: "Re-record baselines and open PR"
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -12,10 +18,7 @@ concurrency:
 
 # ── Pin runner and tool versions ─────────────────────────────────
 # Snapshot tests are pixel-sensitive. Changing any of these versions
-# will likely require re-recording baselines:
-#   Web:     npx playwright test --update-snapshots
-#   iOS:     uncomment isRecording in setUp(), run swift test, re-commit
-#   Android: ./gradlew :jist:recordPaparazziDebug
+# will likely require re-recording baselines via workflow dispatch.
 env:
   MACOS_RUNNER: macos-26
   UBUNTU_RUNNER: ubuntu-24.04
@@ -23,8 +26,10 @@ env:
   JAVA_VERSION: "17"
 
 jobs:
+  # ── Verify mode (push / PR) ──────────────────────────────────
   web:
     name: Web (Playwright)
+    if: ${{ !inputs.record }}
     runs-on: ${{ vars.MACOS_RUNNER || 'macos-26' }}
     defaults:
       run:
@@ -41,9 +46,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx playwright install chromium
-
-      - name: Run snapshot tests
-        run: npx playwright test
+      - run: npx playwright test
 
       - name: Upload diff artifacts
         if: failure()
@@ -54,6 +57,7 @@ jobs:
 
   ios:
     name: iOS (swift-snapshot-testing)
+    if: ${{ !inputs.record }}
     runs-on: ${{ vars.MACOS_RUNNER || 'macos-26' }}
     defaults:
       run:
@@ -66,14 +70,12 @@ jobs:
           XCODE_PATH=$(ls -d /Applications/Xcode_26.4* 2>/dev/null | head -1)
           if [ -z "$XCODE_PATH" ]; then
             echo "Xcode 26.4 not found, using default"
-            xcodebuild -version
           else
             sudo xcode-select -s "$XCODE_PATH"
-            xcodebuild -version
           fi
+          xcodebuild -version
 
-      - name: Run snapshot tests
-        run: swift test
+      - run: swift test
 
       - name: Upload diff artifacts
         if: failure()
@@ -84,6 +86,7 @@ jobs:
 
   android:
     name: Android (Paparazzi)
+    if: ${{ !inputs.record }}
     runs-on: ${{ vars.UBUNTU_RUNNER || 'ubuntu-24.04' }}
     defaults:
       run:
@@ -97,8 +100,7 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: gradle
 
-      - name: Run snapshot tests
-        run: ./gradlew :jist:verifyPaparazziDebug
+      - run: ./gradlew :jist:verifyPaparazziDebug
 
       - name: Upload diff artifacts
         if: failure()
@@ -106,3 +108,83 @@ jobs:
         with:
           name: android-snapshot-diffs
           path: android/jist/build/reports/paparazzi/
+
+  # ── Record mode (workflow dispatch) ──────────────────────────
+  record:
+    name: Record baselines & open PR
+    if: ${{ inputs.record }}
+    runs-on: ${{ vars.MACOS_RUNNER || 'macos-26' }}
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+
+      # ── Xcode ──
+      - name: Select Xcode
+        run: |
+          XCODE_PATH=$(ls -d /Applications/Xcode_26.4* 2>/dev/null | head -1)
+          if [ -z "$XCODE_PATH" ]; then
+            echo "Xcode 26.4 not found, using default"
+          else
+            sudo xcode-select -s "$XCODE_PATH"
+          fi
+          xcodebuild -version
+
+      # ── Web ──
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Record web baselines
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+          npx playwright install chromium
+          npx playwright test --update-snapshots || true
+
+      # ── iOS ──
+      - name: Record iOS baselines
+        working-directory: ios
+        run: |
+          sed -i '' 's|// isRecording = true|isRecording = true|' Tests/JistTests/SnapshotTests.swift
+          swift test || true
+
+      # ── Android ──
+      - uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Record Android baselines
+        working-directory: android
+        run: ./gradlew :jist:recordPaparazziDebug
+
+      # ── Open PR ──
+      - name: Create PR with updated baselines
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git checkout -- ios/Tests/JistTests/SnapshotTests.swift
+          BRANCH="ci/update-snapshots-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH"
+          git add \
+            web/tests/__snapshots__ \
+            ios/Tests/JistTests/__Snapshots__ \
+            android/jist/src/test/snapshots
+          if git diff --cached --quiet; then
+            echo "No snapshot changes detected"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update snapshot baselines from CI"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "Update snapshot baselines" \
+            --body "Re-recorded snapshot baselines from CI runners.
+
+          Triggered via workflow dispatch."
