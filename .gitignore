@@ -6,6 +6,7 @@ __pycache__/
 # Build outputs
 .build/
 build/
+dist/
 DerivedData/
 
 # iOS

@@ -4,6 +4,13 @@
    ═══════════════════════════════════════════ */
 
 import JistRenderer from "./jist-renderer.js";
+import type {
+  JistTemplate,
+  JistData,
+  JistFormatDate,
+  JistOnAction,
+  JistActionEvent,
+} from "./jist-renderer.js";
 
 const SUPPORTED_VERSION = "1";
 
@@ -15,71 +22,78 @@ const UNITLESS_KEYS = new Set([
   "opacity",
 ]);
 
-class JistTemplate extends HTMLElement {
+type JistMode = "auto" | "light" | "dark";
+
+type ThemeValue = string | number | boolean | null | ThemeObject;
+interface ThemeObject {
+  [key: string]: ThemeValue;
+}
+
+class JistTemplateElement extends HTMLElement {
   static observedAttributes = ["template", "data", "theme", "mode"];
 
-  #template = null;
-  #data = null;
-  #theme = null;
-  #mode = "auto";
-  #formatDate = null;
-  #onAction = null;
-  #mediaQuery = null;
-  #mediaHandler = null;
+  #template: JistTemplate | null = null;
+  #data: JistData | null = null;
+  #theme: ThemeObject | null = null;
+  #mode: JistMode = "auto";
+  #formatDate: JistFormatDate | null = null;
+  #onAction: JistOnAction | null = null;
+  #mediaQuery: MediaQueryList | null = null;
+  #mediaHandler: (() => void) | null = null;
 
   // ── Property API ──────────────────────────
 
-  get template() {
+  get template(): JistTemplate | null {
     return this.#template;
   }
-  set template(val) {
+  set template(val: JistTemplate | string | null) {
     this.#template = typeof val === "string" ? JSON.parse(val) : val;
     this.#render();
   }
 
-  get data() {
+  get data(): JistData | null {
     return this.#data;
   }
-  set data(val) {
+  set data(val: JistData | string | null) {
     this.#data = typeof val === "string" ? JSON.parse(val) : val;
     this.#render();
   }
 
-  get theme() {
+  get theme(): ThemeObject | null {
     return this.#theme;
   }
-  set theme(val) {
+  set theme(val: ThemeObject | string | null) {
     this.#theme = typeof val === "string" ? JSON.parse(val) : val;
     this.#applyTheme();
     this.#render();
   }
 
-  get mode() {
+  get mode(): JistMode {
     return this.#mode;
   }
-  set mode(val) {
-    this.#mode = val || "auto";
+  set mode(val: JistMode | string) {
+    this.#mode = (val || "auto") as JistMode;
     this.#applyTheme();
   }
 
-  get formatDate() {
+  get formatDate(): JistFormatDate | null {
     return this.#formatDate;
   }
-  set formatDate(fn) {
+  set formatDate(fn: JistFormatDate | null) {
     this.#formatDate = fn;
     this.#render();
   }
 
-  get onAction() {
+  get onAction(): JistOnAction | null {
     return this.#onAction;
   }
-  set onAction(fn) {
+  set onAction(fn: JistOnAction | null) {
     this.#onAction = fn;
   }
 
   // ── Lifecycle ─────────────────────────────
 
-  connectedCallback() {
+  connectedCallback(): void {
     this.#mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     this.#mediaHandler = () => {
       if (this.#mode === "auto") {
@@ -93,13 +107,17 @@ class JistTemplate extends HTMLElement {
     this.#render();
   }
 
-  disconnectedCallback() {
+  disconnectedCallback(): void {
     if (this.#mediaQuery && this.#mediaHandler) {
       this.#mediaQuery.removeEventListener("change", this.#mediaHandler);
     }
   }
 
-  attributeChangedCallback(name, oldVal, newVal) {
+  attributeChangedCallback(
+    name: string,
+    oldVal: string | null,
+    newVal: string | null
+  ): void {
     if (oldVal === newVal) return;
     switch (name) {
       case "template":
@@ -116,7 +134,7 @@ class JistTemplate extends HTMLElement {
         this.#render();
         break;
       case "mode":
-        this.#mode = newVal || "auto";
+        this.#mode = (newVal || "auto") as JistMode;
         this.#applyTheme();
         this.#render();
         break;
@@ -125,18 +143,18 @@ class JistTemplate extends HTMLElement {
 
   // ── Theme → CSS Custom Properties ─────────
 
-  #isDark() {
+  #isDark(): boolean {
     if (this.#mode === "dark") return true;
     if (this.#mode === "light") return false;
     return this.#mediaQuery?.matches ?? false;
   }
 
-  #applyTheme() {
+  #applyTheme(): void {
     if (!this.#theme) return;
     if (!this.isConnected) return;
 
     // Clear existing jist custom properties
-    const toRemove = [];
+    const toRemove: string[] = [];
     for (let i = 0; i < this.style.length; i++) {
       if (this.style[i].startsWith("--jist-")) toRemove.push(this.style[i]);
     }
@@ -146,18 +164,22 @@ class JistTemplate extends HTMLElement {
     this.#flatten(this.#theme, "--jist");
 
     // Apply dark overrides if active
-    if (this.#isDark() && this.#theme.modes?.dark) {
-      this.#flatten(this.#theme.modes.dark, "--jist");
+    if (this.#isDark()) {
+      const darkOverrides = (this.#theme.modes as ThemeObject | undefined)
+        ?.dark as ThemeObject | undefined;
+      if (darkOverrides) {
+        this.#flatten(darkOverrides, "--jist");
+      }
     }
   }
 
-  #flatten(obj, prefix) {
+  #flatten(obj: ThemeObject, prefix: string): void {
     for (const [key, value] of Object.entries(obj)) {
       if (key === "modes" || key.startsWith("$")) continue;
       const kebab = key.replace(/([A-Z])/g, "-$1").toLowerCase();
       const prop = `${prefix}-${kebab}`;
       if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-        this.#flatten(value, prop);
+        this.#flatten(value as ThemeObject, prop);
       } else if (value !== null && value !== undefined) {
         // Numeric values get "px" suffix unless they're unitless properties
         const cssValue =
@@ -171,7 +193,7 @@ class JistTemplate extends HTMLElement {
 
   // ── Rendering ─────────────────────────────
 
-  #render() {
+  #render(): void {
     if (!this.#template || !this.#data) return;
     if (!this.isConnected) return;
 
@@ -182,8 +204,8 @@ class JistTemplate extends HTMLElement {
     }
 
     const renderer = new JistRenderer({
-      formatDate: this.#formatDate,
-      onAction: (detail) => {
+      formatDate: this.#formatDate || undefined,
+      onAction: (detail: JistActionEvent) => {
         // Property callback
         if (this.#onAction) this.#onAction(detail);
 
@@ -208,7 +230,15 @@ class JistTemplate extends HTMLElement {
   }
 }
 
-customElements.define("jist-template", JistTemplate);
+customElements.define("jist-template", JistTemplateElement);
 
-export default JistTemplate;
+export default JistTemplateElement;
 export { JistRenderer };
+export type {
+  JistTemplate,
+  JistData,
+  JistFormatDate,
+  JistOnAction,
+  JistActionEvent,
+  JistMode,
+};

@@ -1,4 +1,4 @@
-import "../src/jist-element.js";
+import "../dist/jist-element.js";
 
 // ── Load Shared Fixtures ────────────────────
 

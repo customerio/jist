@@ -245,7 +245,7 @@ All tests use a deterministic `formatDate` (returns `"Apr 1, 2026"`) and placeho
 **Web**
 ```bash
 cd web
-npm ci && npx playwright install chromium
+npm ci && npm run build && npx playwright install chromium
 npx playwright test                       # verify against baselines
 npx playwright test --update-snapshots    # re-record baselines
 ```

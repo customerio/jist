@@ -2,10 +2,12 @@
   "name": "jist-web",
   "private": true,
   "scripts": {
+    "build": "tsc",
     "test": "playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
-    "serve": "^14.2.4"
+    "serve": "^14.2.4",
+    "typescript": "^5.7.0"
   }
 }
