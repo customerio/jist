@@ -19,7 +19,6 @@ concurrency:
 env:
   MACOS_RUNNER: macos-26
   UBUNTU_RUNNER: ubuntu-24.04
-  XCODE_VERSION: "16.4"
   NODE_VERSION: "20"
   JAVA_VERSION: "17"
 
@@ -61,9 +60,6 @@ jobs:
         working-directory: ios
     steps:
       - uses: actions/checkout@v4
-
-      - name: Select Xcode ${{ env.XCODE_VERSION }}
-        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
 
       - name: Run snapshot tests
         run: swift test
