@@ -22,6 +22,7 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -34,7 +35,11 @@ import kotlinx.serialization.json.contentOrNull
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import java.time.format.FormatStyle
+
+private val LocalJistTextAlign = compositionLocalOf { TextAlign.Start }
 
 private fun tightTextStyle(fontSize: TextUnit, fontWeight: FontWeight, color: Color) = TextStyle(
     fontSize = fontSize,
@@ -87,24 +92,40 @@ private fun JistLayoutView(
     val marginMod = marginModifier(node.margin)
 
     if (isVertical) {
-        Column(
-            verticalArrangement = verticalArrangement(node.justify, gap),
-            horizontalAlignment = horizontalAlignment(node.align),
-            modifier = modifier.then(marginMod)
-        ) {
-            node.children.forEach { child ->
-                val childMod = if (isStretch) Modifier.fillMaxWidth() else Modifier
-                JistNodeView(child, data, resolver, formatDate, onAction, childMod)
+        val textAlign = when (node.align) {
+            "center" -> TextAlign.Center
+            "end" -> TextAlign.End
+            else -> TextAlign.Start
+        }
+        CompositionLocalProvider(LocalJistTextAlign provides textAlign) {
+            Column(
+                verticalArrangement = verticalArrangement(node.justify, gap),
+                horizontalAlignment = horizontalAlignment(node.align),
+                modifier = modifier.then(marginMod)
+            ) {
+                node.children.forEach { child ->
+                    JistNodeView(child, data, resolver, formatDate, onAction, Modifier.fillMaxWidth())
+                }
             }
         }
     } else {
+        val parentAlign = LocalJistTextAlign.current
+        val effectiveJustify = node.justify ?: when (parentAlign) {
+            TextAlign.Center -> "center"
+            TextAlign.End -> "end"
+            else -> null
+        }
         Row(
-            horizontalArrangement = horizontalArrangement(node.justify, gap),
+            horizontalArrangement = horizontalArrangement(effectiveJustify, gap),
             verticalAlignment = verticalAlignment(node.align),
             modifier = modifier.then(marginMod)
         ) {
+            val needsWeight = effectiveJustify == null || effectiveJustify == "start"
             node.children.forEach { child ->
-                val childMod = if (isStretch) Modifier.fillMaxHeight() else Modifier
+                val childMod = when {
+                    needsWeight && child is JistNode.Layout -> Modifier.weight(1f)
+                    else -> Modifier
+                }
                 JistNodeView(child, data, resolver, formatDate, onAction, childMod)
             }
         }
@@ -213,6 +234,7 @@ private fun JistHeadingView(
 
     Text(
         text = text,
+        textAlign = LocalJistTextAlign.current,
         style = tightTextStyle(
             fontSize = resolver.resolveFloat("heading", variant, "text", "fontSize", fallback = defaultHeadingSize(variant)).sp,
             fontWeight = JistThemeResolver.fontWeight(
@@ -245,6 +267,7 @@ private fun JistTextView(
 
     Text(
         text = text,
+        textAlign = LocalJistTextAlign.current,
         style = tightTextStyle(
             fontSize = resolver.resolveFloat("text", node.variant, "text", "fontSize", fallback = 14f).sp,
             fontWeight = JistThemeResolver.fontWeight(
@@ -279,6 +302,7 @@ private fun JistDateView(
 
     Text(
         text = display,
+        textAlign = LocalJistTextAlign.current,
         style = tightTextStyle(
             fontSize = resolver.resolveFloat("date", node.variant, "text", "fontSize", fallback = 12f).sp,
             fontWeight = JistThemeResolver.fontWeight(
@@ -380,7 +404,7 @@ private fun JistImageView(
 
     var imageMod = modifier
     if (node.isFillWidth) imageMod = imageMod.fillMaxWidth()
-    node.widthValue?.let { imageMod = imageMod.width(it.dp) }
+    node.widthValue?.let { imageMod = imageMod.requiredWidth(it.dp) }
     node.height?.let { imageMod = imageMod.height(it.dp) }
     imageMod = imageMod.clip(RoundedCornerShape((node.borderRadius ?: 0f).dp))
 

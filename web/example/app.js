@@ -57,6 +57,10 @@ mount("t-basic", "basic", "basic");
 mount("t-image", "image", "image");
 mount("t-cta", "cta", "cta");
 mount("t-action", "action", "action");
+mount("t-hero", "hero", "hero");
+mount("t-inbox", "inbox", "inbox");
+mount("t-profile", "profile", "profile");
+mount("t-announcement", "announcement", "announcement");
 
 // ── Dark Mode Toggle ────────────────────────
 

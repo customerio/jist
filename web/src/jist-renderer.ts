@@ -195,9 +195,21 @@ export default class JistRenderer {
       if (node.margin.bottom) el.style.marginBottom = px(node.margin.bottom);
       if (node.margin.left) el.style.marginLeft = px(node.margin.left);
     }
+    const isHorizontal = node.direction === "horizontal";
+    const needsFlex = isHorizontal && (!node.justify || node.justify === "start");
+    const textAlign = !isHorizontal && node.align === "center" ? "center"
+                    : !isHorizontal && node.align === "end" ? "right"
+                    : "";
     for (const child of node.children || []) {
       const childEl = this.render(child, data);
-      if (childEl) el.appendChild(childEl);
+      if (childEl) {
+        if (needsFlex && child.type === "layout") {
+          childEl.style.flex = "1";
+          childEl.style.minWidth = "0";
+        }
+        if (textAlign) childEl.style.textAlign = textAlign;
+        el.appendChild(childEl);
+      }
     }
     return el;
   }

@@ -12,7 +12,7 @@ struct ContentView: View {
     @State private var currentActivity: Activity<JistActivityAttributes>?
     @State private var progressTask: Task<Void, Never>?
 
-    private let templateOrder = ["basic", "image", "cta", "action"]
+    private let templateOrder = ["basic", "image", "cta", "action", "hero", "inbox", "profile", "announcement"]
 
     private let deliverySteps: [(title: String, body: String, step: String, eta: String)] = [
         ("Order Confirmed", "Your order #1234 has been confirmed.", "1 of 4", "ETA 30 min"),

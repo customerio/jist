@@ -117,14 +117,29 @@ struct JistLayoutView: View {
     @ViewBuilder
     private func childView(_ child: JistNode) -> some View {
         let view = JistNodeView(node: child, data: data, resolver: resolver, formatDate: formatDate, onAction: onAction)
-        if isStretch {
-            if isVertical {
-                view.frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                view.frame(maxHeight: .infinity)
-            }
+        if isVertical {
+            view.frame(maxWidth: .infinity, alignment: frameAlignment)
+                .multilineTextAlignment(textAlignment)
+        } else if isStretch {
+            view.frame(maxHeight: .infinity)
         } else {
             view
+        }
+    }
+
+    private var frameAlignment: Alignment {
+        switch node.align {
+        case "end":    return .trailing
+        case "center": return .center
+        default:       return .leading
+        }
+    }
+
+    private var textAlignment: TextAlignment {
+        switch node.align {
+        case "end":    return .trailing
+        case "center": return .center
+        default:       return .leading
         }
     }
 }

@@ -22,5 +22,49 @@
     "avatar": "https://placehold.co/96x96/c7d2fe/4338ca.png?text=SC",
     "timestamp": "2026-04-02T10:00:00Z",
     "open": { "url": "/team/sarah-chen" }
+  },
+  "hero": {
+    "title": "Alex Rivera",
+    "body": "Just shipped the new onboarding flow — 40% faster signup completion. The team has been working on this for weeks and we're thrilled with the results.",
+    "media": "https://placehold.co/600x400/e2e8f0/475569.png?text=Onboarding+Flow",
+    "avatar": "https://placehold.co/96x96/c7d2fe/4338ca.png?text=AR",
+    "timestamp": "2026-04-01T16:45:00Z",
+    "dismiss": { "label": "Dismiss", "url": "#dismiss" },
+    "cta": { "label": "View details", "url": "/updates/onboarding" }
+  },
+  "inbox": {
+    "title": "Notifications",
+    "avatar1": "https://placehold.co/96x96/c7d2fe/4338ca.png?text=JL",
+    "heading1": "Jake Liu commented",
+    "body1": "Looks great, just one small tweak on the padding.",
+    "time1": "2026-04-01T09:30:00Z",
+    "item1": { "url": "/comments/42" },
+    "avatar2": "https://placehold.co/96x96/fecaca/dc2626.png?text=MK",
+    "heading2": "Build failed",
+    "body2": "CI pipeline #287 failed on the linting step.",
+    "time2": "2026-04-01T08:15:00Z",
+    "item2": { "url": "/builds/287" },
+    "avatar3": "https://placehold.co/96x96/bbf7d0/16a34a.png?text=PR",
+    "heading3": "PR merged",
+    "body3": "feat: add dark mode support was merged into main.",
+    "time3": "2026-03-31T17:00:00Z",
+    "item3": { "url": "/pulls/91" }
+  },
+  "profile": {
+    "title": "Dana Park",
+    "body": "Senior Engineer · Design Systems. Building components that scale across platforms.",
+    "avatar": "https://placehold.co/96x96/c7d2fe/4338ca.png?text=DP",
+    "timestamp": "2026-03-15T00:00:00Z",
+    "secondary": { "label": "Message", "url": "/messages/dana" },
+    "cta": { "label": "View profile", "url": "/team/dana-park" }
+  },
+  "announcement": {
+    "title": "Jist 2.0 is here",
+    "subtitle": "A major update to the cross-platform template renderer with new components and improved performance.",
+    "body": "This release includes action wrappers, image support, dark mode theming, and visual regression testing across all three platforms.",
+    "media": "https://placehold.co/600x400/e2e8f0/475569.png?text=Jist+2.0",
+    "timestamp": "2026-04-01T12:00:00Z",
+    "learn": { "label": "Release notes", "url": "/changelog" },
+    "cta": { "label": "Try it now", "url": "/get-started" }
   }
 }

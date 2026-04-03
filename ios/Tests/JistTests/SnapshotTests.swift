@@ -45,6 +45,22 @@ final class JistSnapshotTests: XCTestCase {
         assertTemplateSnapshot("action", mode: .light)
     }
 
+    func testHeroLight() {
+        assertTemplateSnapshot("hero", mode: .light)
+    }
+
+    func testInboxLight() {
+        assertTemplateSnapshot("inbox", mode: .light)
+    }
+
+    func testProfileLight() {
+        assertTemplateSnapshot("profile", mode: .light)
+    }
+
+    func testAnnouncementLight() {
+        assertTemplateSnapshot("announcement", mode: .light)
+    }
+
     // MARK: - Dark Mode
 
     func testBasicDark() {
@@ -61,6 +77,22 @@ final class JistSnapshotTests: XCTestCase {
 
     func testActionDark() {
         assertTemplateSnapshot("action", mode: .dark)
+    }
+
+    func testHeroDark() {
+        assertTemplateSnapshot("hero", mode: .dark)
+    }
+
+    func testInboxDark() {
+        assertTemplateSnapshot("inbox", mode: .dark)
+    }
+
+    func testProfileDark() {
+        assertTemplateSnapshot("profile", mode: .dark)
+    }
+
+    func testAnnouncementDark() {
+        assertTemplateSnapshot("announcement", mode: .dark)
     }
 
     // MARK: - Placeholder Images

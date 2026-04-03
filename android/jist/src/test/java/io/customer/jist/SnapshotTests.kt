@@ -54,7 +54,7 @@ class SnapshotTests {
 
     private val allTemplates: Map<String, JistTemplate> by lazy {
         val obj = JistJson.parseToJsonElement(loadResource("templates.json")).jsonObject
-        listOf("basic", "image", "cta", "action").associateWith { key ->
+        listOf("basic", "image", "cta", "action", "hero", "inbox", "profile", "announcement").associateWith { key ->
             JistJson.decodeFromJsonElement(JistTemplate.serializer(), obj[key]!!)
         }
     }
@@ -101,4 +101,24 @@ class SnapshotTests {
 
     @Test fun action_light() = snapshot("action", JistMode.Light)
     @Test fun action_dark() = snapshot("action", JistMode.Dark)
+
+    // -- hero --
+
+    @Test fun hero_light() = snapshot("hero", JistMode.Light)
+    @Test fun hero_dark() = snapshot("hero", JistMode.Dark)
+
+    // -- inbox --
+
+    @Test fun inbox_light() = snapshot("inbox", JistMode.Light)
+    @Test fun inbox_dark() = snapshot("inbox", JistMode.Dark)
+
+    // -- profile --
+
+    @Test fun profile_light() = snapshot("profile", JistMode.Light)
+    @Test fun profile_dark() = snapshot("profile", JistMode.Dark)
+
+    // -- announcement --
+
+    @Test fun announcement_light() = snapshot("announcement", JistMode.Light)
+    @Test fun announcement_dark() = snapshot("announcement", JistMode.Dark)
 }

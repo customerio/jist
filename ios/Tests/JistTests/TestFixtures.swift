@@ -27,7 +27,7 @@ enum TestFixtures {
     // MARK: - Templates
 
     /// Template keys to test (excludes liveActivity).
-    static let templateKeys = ["basic", "image", "cta", "action"]
+    static let templateKeys = ["basic", "image", "cta", "action", "hero", "inbox", "profile", "announcement"]
 
     /// Parses `templates.json` and returns each template keyed by name.
     static func loadTemplates() -> [String: JistTemplate] {

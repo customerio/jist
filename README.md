@@ -202,7 +202,7 @@ jist/
 │   ├── jist-spec.md
 │   ├── jist-template-schema.json
 │   └── jist-theme-schema.json
-├── shared/             # Test fixtures (used by all platforms)
+├── shared/             # Shared fixtures (used by tests and example apps)
 │   ├── templates.json
 │   ├── data.json
 │   └── theme.json
@@ -223,12 +223,16 @@ Each platform has snapshot tests that render every template with the shared fixt
 
 Every platform tests the same combinations:
 
-| Template | Light | Dark |
-|----------|-------|------|
-| basic    | ✓     | ✓    |
-| image    | ✓     | ✓    |
-| cta      | ✓     | ✓    |
-| action   | ✓     | ✓    |
+| Template     | Light | Dark |
+|--------------|-------|------|
+| basic        | ✓     | ✓    |
+| image        | ✓     | ✓    |
+| cta          | ✓     | ✓    |
+| action       | ✓     | ✓    |
+| hero         | ✓     | ✓    |
+| inbox        | ✓     | ✓    |
+| profile      | ✓     | ✓    |
+| announcement | ✓     | ✓    |
 
 All tests use a deterministic `formatDate` (returns `"Apr 1, 2026"`) and placeholder images to ensure reproducible output without network access.
 
