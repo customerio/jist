@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jist Visual Test Harness</title>
+  <link rel="stylesheet" href="../src/jist.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f7;
+      color: #1a1a2e;
+      padding: 20px;
+    }
+
+    body.dark {
+      background: #121218;
+      color: #e8e8f0;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e2e2e8;
+      border-radius: 12px;
+      padding: 16px;
+      max-width: 390px;
+    }
+
+    body.dark .card {
+      background: #1e1e2a;
+      border-color: #2a2a3c;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <jist-template id="target"></jist-template>
+  </div>
+  <script type="module" src="../src/jist-element.js"></script>
+</body>
+</html>

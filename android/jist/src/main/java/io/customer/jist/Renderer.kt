@@ -15,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
@@ -219,7 +220,7 @@ private fun JistHeadingView(
             ),
             color = resolver.resolveColor("heading", variant, "text", "color", fallback = Color.Black)
         ),
-        modifier = modifier
+        modifier = modifier.semantics { heading() }
     )
 }
 
