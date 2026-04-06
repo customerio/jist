@@ -16,6 +16,13 @@
     "timestamp": "2026-03-31T09:15:00Z",
     "cta": { "label": "Verify now", "url": "#verify" }
   },
+  "liveActivity": {
+    "title": "Order on the way",
+    "step": "Step 3 of 4",
+    "body": "Your rider has picked up your order and is heading to you now.",
+    "timestamp": "2026-04-01T12:42:00Z",
+    "eta": "ETA 12 min"
+  },
   "action": {
     "title": "Sarah Chen joined the team",
     "body": "Give her a warm welcome!",

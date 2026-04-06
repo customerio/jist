@@ -1,0 +1,1 @@
+../../../web/dist/jist-renderer.js

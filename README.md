@@ -206,6 +206,8 @@ jist/
 │   ├── templates.json
 │   ├── data.json
 │   └── theme.json
+├── builder/            # Visual template editor (Next.js)
+│   └── src/
 ├── web/                # Web renderer (custom element)
 │   └── src/
 ├── ios/                # iOS renderer (SwiftUI, Swift Package)
