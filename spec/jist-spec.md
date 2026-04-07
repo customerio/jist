@@ -58,6 +58,7 @@ A template is a JSON object with two required fields:
 **Container nodes** hold children:
 - `layout` — arranges children along an axis
 - `action` — wraps children in a clickable region
+- `dynamicLayout` — repeats a template for each item in a data array
 
 **Leaf nodes** render content from data:
 - `heading` — text heading (h2–h4)
@@ -136,6 +137,92 @@ Clickable wrapper that makes its children interactive. Fires an action event whe
   "children": [
     { "type": "image", "name": "thumbnail", "width": 64, "height": 64, "objectFit": "cover", "borderRadius": 8 },
     { "type": "heading", "name": "title", "variant": "h4" }
+  ]
+}
+```
+
+---
+
+### dynamicLayout
+
+A layout that repeats a single template node for each item in a data array. Combines the layout properties of a regular layout with data-driven iteration.
+
+| Property | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `type` | `"dynamicLayout"` | Yes | | |
+| `name` | string | Yes | | Data binding key (expects an array of objects) |
+| `direction` | `"vertical"` \| `"horizontal"` | No | `"vertical"` | Main axis for arranging items |
+| `gap` | number | No | 0 | Space between items |
+| `align` | enum | No | `"stretch"` | Cross-axis alignment |
+| `justify` | enum | No | `"start"` | Main-axis distribution |
+| `margin` | spacing object | No | | Outer spacing |
+| `template` | node | Yes | | Single node rendered once per item |
+
+**`align` values:** `"stretch"`, `"start"`, `"end"`, `"center"`, `"baseline"`
+
+**`justify` values:** `"start"`, `"end"`, `"center"`, `"space-between"`, `"space-around"`, `"space-evenly"`
+
+**Data binding:** `data[name]` must be an array of objects. For each item in the array, the template node is rendered with data binding scoped to that item object. Within the template, `data[childName]` resolves against the current item, not the top-level data. Use a `layout` node as the template to render multiple elements per item.
+
+**Not rendered** if `data[name]` is absent or not an array.
+
+Dynamic layout is structural, not themed — like layout, all visual properties come from the template node.
+
+**Example — notification inbox:**
+
+```json
+{
+  "type": "dynamicLayout",
+  "name": "items",
+  "direction": "vertical",
+  "gap": 12,
+  "template": {
+    "type": "action",
+    "name": "action",
+    "children": [
+      {
+        "type": "layout",
+        "direction": "horizontal",
+        "gap": 10,
+        "align": "center",
+        "children": [
+          { "type": "image", "name": "avatar", "width": 36, "height": 36, "objectFit": "cover", "borderRadius": 18 },
+          {
+            "type": "layout",
+            "direction": "vertical",
+            "gap": 2,
+            "children": [
+              { "type": "heading", "name": "heading", "variant": "h4" },
+              { "type": "text", "name": "body" }
+            ]
+          },
+          { "type": "date", "name": "time" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Data:**
+
+```json
+{
+  "items": [
+    {
+      "avatar": "https://example.com/avatar1.png",
+      "heading": "Jake Liu commented",
+      "body": "Looks great, just one small tweak.",
+      "time": "2026-04-01T09:30:00Z",
+      "action": { "url": "/comments/42" }
+    },
+    {
+      "avatar": "https://example.com/avatar2.png",
+      "heading": "Build failed",
+      "body": "CI pipeline #287 failed.",
+      "time": "2026-04-01T08:15:00Z",
+      "action": { "url": "/builds/287" }
+    }
   ]
 }
 ```
@@ -292,6 +379,7 @@ result:    renders "Hello World" as a heading
 | button | **Not rendered** (skipped) |
 | image | **Not rendered** (skipped) |
 | action | Rendered (children appear), data is null |
+| dynamicLayout | **Not rendered** (skipped) |
 
 ### Name as Style Hook
 
@@ -661,6 +749,7 @@ Each component has accessibility requirements that all platform implementations 
 | button | Button role, accessible label from button text |
 | action | Button role, keyboard/switch-control focusable, accessible label derived from children text |
 | image | Alt text derived from data (e.g., `data["title"]`) |
+| dynamicLayout | No semantic role (structural only) |
 | layout | No semantic role (structural only) |
 
 ---

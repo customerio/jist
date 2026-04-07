@@ -40,7 +40,8 @@
         { "$ref": "#/definitions/textNode" },
         { "$ref": "#/definitions/dateNode" },
         { "$ref": "#/definitions/buttonNode" },
-        { "$ref": "#/definitions/imageNode" }
+        { "$ref": "#/definitions/imageNode" },
+        { "$ref": "#/definitions/dynamicLayoutNode" }
       ]
     },
 
@@ -220,6 +221,46 @@
           "minimum": 0,
           "default": 0,
           "description": "Corner rounding (unitless — px/pt/dp). Use width/2 for a circle."
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "dynamicLayoutNode": {
+      "type": "object",
+      "description": "A layout that repeats a single template node for each item in a data array. Combines the layout properties of a regular layout with data-driven iteration.",
+      "required": ["type", "name", "template"],
+      "properties": {
+        "type": { "const": "dynamicLayout" },
+        "name": {
+          "type": "string",
+          "description": "Data binding key. `data[name]` must be an array of objects. Each object becomes the data context for one rendering of the template."
+        },
+        "direction": {
+          "enum": ["vertical", "horizontal"],
+          "default": "vertical",
+          "description": "Main axis direction for arranging repeated items. Defaults to 'vertical'."
+        },
+        "gap": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Space between repeated items (unitless — px/pt/dp)."
+        },
+        "align": {
+          "enum": ["stretch", "start", "end", "center", "baseline"],
+          "description": "Cross-axis alignment of repeated items."
+        },
+        "justify": {
+          "enum": ["start", "end", "center", "space-between", "space-around", "space-evenly"],
+          "description": "Main-axis distribution of repeated items."
+        },
+        "margin": {
+          "$ref": "#/definitions/spacingObject",
+          "description": "Outer spacing around the dynamic layout container."
+        },
+        "template": {
+          "$ref": "#/definitions/componentNode",
+          "description": "A single node rendered once per item. Data binding within this node resolves against the current array item, not the top-level data. Use a layout node as the template to render multiple elements per item."
         }
       },
       "additionalProperties": false

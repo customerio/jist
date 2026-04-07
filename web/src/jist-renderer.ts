@@ -64,6 +64,17 @@ export interface JistImageNode {
   borderRadius?: number;
 }
 
+export interface JistDynamicLayoutNode {
+  type: "dynamicLayout";
+  name: string;
+  direction?: "vertical" | "horizontal";
+  gap?: number;
+  align?: string;
+  justify?: string;
+  margin?: JistSpacing;
+  template: JistNode;
+}
+
 export type JistNode =
   | JistLayoutNode
   | JistActionNode
@@ -71,7 +82,8 @@ export type JistNode =
   | JistTextNode
   | JistDateNode
   | JistButtonNode
-  | JistImageNode;
+  | JistImageNode
+  | JistDynamicLayoutNode;
 
 export interface JistTemplate {
   version: string;
@@ -174,6 +186,8 @@ export default class JistRenderer {
         return this.#buildButton(node, data);
       case "image":
         return this.#buildImage(node, data);
+      case "dynamicLayout":
+        return this.#buildDynamicLayout(node, data);
       default:
         return null; // Unknown component — skip (forward compatibility)
     }
@@ -326,6 +340,33 @@ export default class JistRenderer {
     if (node.height) el.style.height = px(node.height);
     if (node.objectFit) el.style.objectFit = node.objectFit;
     if (node.borderRadius) el.style.borderRadius = px(node.borderRadius);
+    return el;
+  }
+
+  // ── Dynamic Layout (repeating container) ───
+
+  #buildDynamicLayout(node: JistDynamicLayoutNode, data: JistData): HTMLElement | null {
+    const items = data[node.name];
+    if (!Array.isArray(items)) return null;
+    const el = document.createElement("div");
+    const direction = node.direction || "vertical";
+    el.style.display = "flex";
+    el.style.flexDirection = direction === "horizontal" ? "row" : "column";
+    if (node.gap) el.style.gap = px(node.gap);
+    if (node.align) el.style.alignItems = ALIGN_MAP[node.align] || node.align;
+    if (node.justify)
+      el.style.justifyContent = JUSTIFY_MAP[node.justify] || node.justify;
+    if (node.margin) {
+      if (node.margin.top) el.style.marginTop = px(node.margin.top);
+      if (node.margin.right) el.style.marginRight = px(node.margin.right);
+      if (node.margin.bottom) el.style.marginBottom = px(node.margin.bottom);
+      if (node.margin.left) el.style.marginLeft = px(node.margin.left);
+    }
+    for (const item of items) {
+      const itemData = (typeof item === "object" && item !== null) ? item as JistData : {};
+      const childEl = this.render(node.template, itemData);
+      if (childEl) el.appendChild(childEl);
+    }
     return el;
   }
 

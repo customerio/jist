@@ -71,6 +71,7 @@ internal fun JistNodeView(
         is JistNode.Date -> JistDateView(node, data, resolver, formatDate, modifier)
         is JistNode.Button -> JistButtonView(node, data, resolver, onAction, modifier)
         is JistNode.Image -> JistImageView(node, data, resolver, modifier)
+        is JistNode.DynamicLayout -> JistDynamicLayoutView(node, data, resolver, formatDate, onAction, modifier)
         is JistNode.Unknown -> { }
     }
 }
@@ -381,6 +382,47 @@ private fun JistButtonView(
                 color = textColor
             )
         )
+    }
+}
+
+// MARK: - Dynamic Layout
+
+@Composable
+private fun JistDynamicLayoutView(
+    node: JistNode.DynamicLayout,
+    data: Map<String, JsonElement>,
+    resolver: JistThemeResolver,
+    formatDate: ((String, String) -> String)?,
+    onAction: ((JistActionEvent) -> Unit)?,
+    modifier: Modifier = Modifier
+) {
+    val items = data[node.name] as? kotlinx.serialization.json.JsonArray ?: return
+    val isVertical = (node.direction ?: "vertical") == "vertical"
+    val gap = node.gap ?: 0f
+    val marginMod = marginModifier(node.margin)
+
+    if (isVertical) {
+        Column(
+            verticalArrangement = verticalArrangement(node.justify, gap),
+            horizontalAlignment = horizontalAlignment(node.align),
+            modifier = modifier.then(marginMod)
+        ) {
+            items.forEach { item ->
+                val itemData = (item as? JsonObject)?.toMap() ?: emptyMap()
+                JistNodeView(node.template, itemData, resolver, formatDate, onAction, Modifier.fillMaxWidth())
+            }
+        }
+    } else {
+        Row(
+            horizontalArrangement = horizontalArrangement(node.justify, gap),
+            verticalAlignment = verticalAlignment(node.align),
+            modifier = modifier.then(marginMod)
+        ) {
+            items.forEach { item ->
+                val itemData = (item as? JsonObject)?.toMap() ?: emptyMap()
+                JistNodeView(node.template, itemData, resolver, formatDate, onAction)
+            }
+        }
     }
 }
 

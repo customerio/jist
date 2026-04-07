@@ -25,6 +25,8 @@ struct JistNodeView: View {
             JistButtonView(node: n, data: data, resolver: resolver, onAction: onAction)
         case .image(let n):
             JistImageView(node: n, data: data, resolver: resolver)
+        case .dynamicLayout(let n):
+            JistDynamicLayoutView(node: n, data: data, resolver: resolver, formatDate: formatDate, onAction: onAction)
         case .unknown:
             EmptyView()
         }
@@ -364,6 +366,66 @@ struct JistImageView: View {
             image
         default:
             image.scaledToFit()
+        }
+    }
+}
+
+// MARK: - Dynamic Layout
+
+struct JistDynamicLayoutView: View {
+    let node: JistDynamicLayoutNode
+    let data: [String: JistValue]
+    let resolver: JistThemeResolver
+    let formatDate: ((String, String) -> String)?
+    let onAction: ((JistActionEvent) -> Void)?
+
+    private var isVertical: Bool { (node.direction ?? "vertical") == "vertical" }
+
+    var body: some View {
+        guard let array = data[node.name]?.arrayValue else {
+            return AnyView(EmptyView())
+        }
+        let gap = node.gap ?? 0
+
+        return AnyView(Group {
+            if isVertical {
+                VStack(alignment: vAlignment, spacing: gap) {
+                    ForEach(0..<array.count, id: \.self) { i in
+                        itemView(array[i])
+                    }
+                }
+            } else {
+                HStack(alignment: hAlignment, spacing: gap) {
+                    ForEach(0..<array.count, id: \.self) { i in
+                        itemView(array[i])
+                    }
+                }
+            }
+        }
+        .modifier(MarginModifier(margin: node.margin)))
+    }
+
+    @ViewBuilder
+    private func itemView(_ item: JistValue) -> some View {
+        let itemData = item.objectValue ?? [:]
+        JistNodeView(node: node.template, data: itemData, resolver: resolver, formatDate: formatDate, onAction: onAction)
+    }
+
+    private var vAlignment: HorizontalAlignment {
+        switch node.align {
+        case "end":    return .trailing
+        case "center": return .center
+        default:       return .leading
+        }
+    }
+
+    private var hAlignment: VerticalAlignment {
+        switch node.align {
+        case "start":    return .top
+        case "end":      return .bottom
+        case "center":   return .center
+        case "baseline": return .firstTextBaseline
+        default:         return .center
         }
     }
 }

@@ -73,6 +73,17 @@ sealed class JistNode {
         val isFillWidth: Boolean get() = width?.contentOrNull == "fill"
     }
 
+    @Serializable
+    data class DynamicLayout(
+        val name: String,
+        val direction: String? = null,
+        val gap: Float? = null,
+        val align: String? = null,
+        val justify: String? = null,
+        val margin: JistSpacing? = null,
+        val template: JistNode
+    ) : JistNode()
+
     data object Unknown : JistNode()
 }
 
@@ -127,6 +138,7 @@ internal object JistNodeSerializer : KSerializer<JistNode> {
                 "date" -> JistJson.decodeFromJsonElement<JistNode.Date>(element)
                 "button" -> JistJson.decodeFromJsonElement<JistNode.Button>(element)
                 "image" -> JistJson.decodeFromJsonElement<JistNode.Image>(element)
+                "dynamicLayout" -> JistJson.decodeFromJsonElement<JistNode.DynamicLayout>(element)
                 else -> JistNode.Unknown
             }
         } catch (_: Exception) {

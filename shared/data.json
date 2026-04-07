@@ -41,21 +41,29 @@
   },
   "inbox": {
     "title": "Notifications",
-    "avatar1": "https://placehold.co/96x96/c7d2fe/4338ca.png?text=JL",
-    "heading1": "Jake Liu commented",
-    "body1": "Looks great, just one small tweak on the padding.",
-    "time1": "2026-04-01T09:30:00Z",
-    "item1": { "url": "/comments/42" },
-    "avatar2": "https://placehold.co/96x96/fecaca/dc2626.png?text=MK",
-    "heading2": "Build failed",
-    "body2": "CI pipeline #287 failed on the linting step.",
-    "time2": "2026-04-01T08:15:00Z",
-    "item2": { "url": "/builds/287" },
-    "avatar3": "https://placehold.co/96x96/bbf7d0/16a34a.png?text=PR",
-    "heading3": "PR merged",
-    "body3": "feat: add dark mode support was merged into main.",
-    "time3": "2026-03-31T17:00:00Z",
-    "item3": { "url": "/pulls/91" }
+    "items": [
+      {
+        "avatar": "https://placehold.co/96x96/c7d2fe/4338ca.png?text=JL",
+        "heading": "Jake Liu commented",
+        "body": "Looks great, just one small tweak on the padding.",
+        "time": "2026-04-01T09:30:00Z",
+        "action": { "url": "/comments/42" }
+      },
+      {
+        "avatar": "https://placehold.co/96x96/fecaca/dc2626.png?text=MK",
+        "heading": "Build failed",
+        "body": "CI pipeline #287 failed on the linting step.",
+        "time": "2026-04-01T08:15:00Z",
+        "action": { "url": "/builds/287" }
+      },
+      {
+        "avatar": "https://placehold.co/96x96/bbf7d0/16a34a.png?text=PR",
+        "heading": "PR merged",
+        "body": "feat: add dark mode support was merged into main.",
+        "time": "2026-03-31T17:00:00Z",
+        "action": { "url": "/pulls/91" }
+      }
+    ]
   },
   "profile": {
     "title": "Dana Park",
