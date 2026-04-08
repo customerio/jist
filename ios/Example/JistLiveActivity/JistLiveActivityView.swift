@@ -31,7 +31,8 @@ struct JistLiveActivityWidget: Widget {
            let theme = decode(context.attributes.themeJSON, as: [String: JistValue].self),
            let data = decode(context.state.dataJSON, as: [String: JistValue].self) {
             JistView(
-                template: template,
+                name: "liveActivity",
+                templates: ["liveActivity": [template]],
                 data: data,
                 theme: theme
             )

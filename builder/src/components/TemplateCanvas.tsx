@@ -1,26 +1,27 @@
 "use client";
 
-import { useBuilderStore } from "@/store/builder-store";
+import { useBuilderStore, selectActiveTemplate } from "@/store/builder-store";
 import { CanvasNode } from "./CanvasNode";
 import { PlusIcon } from "./Icons";
 
 export function TemplateCanvas() {
-  const { template, newTemplate, templateErrors } = useBuilderStore();
+  const { activeTemplateName, loadAllSamples, templateErrors } = useBuilderStore();
+  const template = useBuilderStore(selectActiveTemplate);
 
-  if (!template) {
+  if (!template || !activeTemplateName) {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-4 text-muted">
         <div className="text-center space-y-2">
           <p className="text-lg font-medium text-foreground">No template loaded</p>
-          <p className="text-sm">Start from scratch or load a sample from the toolbar</p>
+          <p className="text-sm">Start from scratch or load samples from the toolbar</p>
         </div>
         <button
-          onClick={newTemplate}
+          onClick={loadAllSamples}
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white
             hover:bg-primary-hover transition-colors text-sm font-medium"
         >
           <PlusIcon className="w-4 h-4" />
-          New Template
+          Load Samples
         </button>
       </div>
     );

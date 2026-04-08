@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
-import { useBuilderStore } from "@/store/builder-store";
+import { useBuilderStore, selectActiveData } from "@/store/builder-store";
 
 export function Preview() {
-  const { template, data, theme, colorMode } = useBuilderStore();
+  const { registry, activeTemplateName, theme, colorMode } = useBuilderStore();
+  const data = useBuilderStore(selectActiveData);
   const containerRef = useRef<HTMLDivElement>(null);
   const elementRef = useRef<HTMLElement | null>(null);
   const scriptLoaded = useRef(false);
 
   const setupElement = useCallback(() => {
-    if (!containerRef.current || !template) return;
+    if (!containerRef.current || !activeTemplateName) return;
 
     // Create or reuse the jist-template element
     if (!elementRef.current) {
@@ -26,16 +27,18 @@ export function Preview() {
       containerRef.current.appendChild(elementRef.current);
     }
 
-    // Update properties
+    // Update properties — pass full registry so template nodes can resolve
     const el = elementRef.current as unknown as {
-      template: unknown;
+      templates: Record<string, unknown[]>;
+      template: string;
       data: unknown;
       theme: unknown;
       mode: string;
       formatDate: (iso: string) => string;
     };
 
-    el.template = template;
+    el.templates = registry;
+    el.template = activeTemplateName;
     el.data = data;
     el.theme = theme;
     el.mode = colorMode;
@@ -52,7 +55,7 @@ export function Preview() {
     };
 
     elementRef.current.style.background = colorMode === "dark" ? "#1a1a2c" : "#ffffff";
-  }, [template, data, theme, colorMode]);
+  }, [registry, activeTemplateName, data, theme, colorMode]);
 
   // Load the jist web component script and CSS
   useEffect(() => {
@@ -92,7 +95,7 @@ export function Preview() {
     }
   }, [setupElement]);
 
-  if (!template) {
+  if (!activeTemplateName) {
     return (
       <div className="h-full flex items-center justify-center text-muted text-sm">
         No template to preview

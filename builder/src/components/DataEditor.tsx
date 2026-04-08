@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { useBuilderStore } from "@/store/builder-store";
+import { useBuilderStore, selectActiveData } from "@/store/builder-store";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
@@ -14,7 +14,8 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
 });
 
 export function DataEditor() {
-  const { data, colorMode, setDataFromJson } = useBuilderStore();
+  const { activeTemplateName, colorMode, setDataFromJson } = useBuilderStore();
+  const data = useBuilderStore(selectActiveData);
   const [localValue, setLocalValue] = useState(() => JSON.stringify(data, null, 2));
   const [parseError, setParseError] = useState<string | null>(null);
   const editingRef = useRef(false);
@@ -56,7 +57,7 @@ export function DataEditor() {
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-surface">
         <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">
-          Data
+          Data{activeTemplateName ? ` — ${activeTemplateName}` : ""}
         </h3>
         <div className="flex items-center gap-2">
           {parseError ? (

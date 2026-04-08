@@ -3,7 +3,7 @@ import Jist
 
 @main
 struct JistExampleApp: App {
-    let templates: [String: JistTemplate]
+    let templates: [String: [JistTemplate]]
     let dataEntries: [String: [String: JistValue]]
     let theme: [String: JistValue]
 
@@ -19,18 +19,23 @@ struct JistExampleApp: App {
         }
     }
 
-    static func loadTemplates() -> [String: JistTemplate] {
+    static func loadTemplates() -> [String: [JistTemplate]] {
         guard let url = Bundle.main.url(forResource: "templates", withExtension: "json"),
               let data = try? Data(contentsOf: url),
               let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [:] }
 
-        var result: [String: JistTemplate] = [:]
+        var result: [String: [JistTemplate]] = [:]
         let decoder = JSONDecoder()
         for (key, value) in raw where key != "$schema" {
-            if let templateData = try? JSONSerialization.data(withJSONObject: value),
-               let template = try? decoder.decode(JistTemplate.self, from: templateData) {
-                result[key] = template
+            guard let versions = value as? [Any] else { continue }
+            var templates: [JistTemplate] = []
+            for version in versions {
+                if let templateData = try? JSONSerialization.data(withJSONObject: version),
+                   let template = try? decoder.decode(JistTemplate.self, from: templateData) {
+                    templates.append(template)
+                }
             }
+            result[key] = templates
         }
         return result
     }

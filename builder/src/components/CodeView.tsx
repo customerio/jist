@@ -14,11 +14,11 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
 });
 
 export function CodeView() {
-  const { template, colorMode, setTemplateFromJson, templateErrors } =
+  const { registry, colorMode, setRegistryFromJson, templateErrors } =
     useBuilderStore();
 
   const [localValue, setLocalValue] = useState(() =>
-    template ? JSON.stringify(template, null, 2) : ""
+    JSON.stringify(registry, null, 2)
   );
   const [parseError, setParseError] = useState<string | null>(null);
   const editingRef = useRef(false);
@@ -28,9 +28,9 @@ export function CodeView() {
       editingRef.current = false;
       return;
     }
-    setLocalValue(template ? JSON.stringify(template, null, 2) : "");
+    setLocalValue(JSON.stringify(registry, null, 2));
     setParseError(null);
-  }, [template]);
+  }, [registry]);
 
   const handleChange = useCallback(
     (value: string | undefined) => {
@@ -46,19 +46,19 @@ export function CodeView() {
         JSON.parse(v);
         setParseError(null);
         editingRef.current = true;
-        setTemplateFromJson(v);
+        setRegistryFromJson(v);
       } catch (e) {
         setParseError((e as Error).message);
       }
     },
-    [setTemplateFromJson]
+    [setRegistryFromJson]
   );
 
   return (
     <div className="h-full flex flex-col">
       {/* Status bar */}
       <div className="flex items-center px-3 py-1.5 border-b border-border bg-surface">
-        <span className="text-xs text-muted font-medium">Template JSON</span>
+        <span className="text-xs text-muted font-medium">Template Registry JSON</span>
         <div className="ml-auto flex items-center gap-2">
           {parseError && <span className="text-xs text-red-500">JSON Error</span>}
           {!parseError && templateErrors.length > 0 && (

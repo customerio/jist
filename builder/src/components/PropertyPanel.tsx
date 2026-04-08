@@ -1,6 +1,6 @@
 "use client";
 
-import { useBuilderStore } from "@/store/builder-store";
+import { useBuilderStore, selectActiveTemplate } from "@/store/builder-store";
 import { getNodeByPath } from "@/lib/template-utils";
 
 /* ── Reusable form controls ──────────────────────── */
@@ -470,7 +470,8 @@ const EDITORS: Record<
 };
 
 export function PropertyPanel() {
-  const { template, selectedNodePath, updateNode } = useBuilderStore();
+  const { selectedNodePath, updateNode } = useBuilderStore();
+  const template = useBuilderStore(selectActiveTemplate);
 
   if (!template || selectedNodePath === null) {
     return (

@@ -72,6 +72,14 @@ export const COMPONENT_DEFS: ComponentDef[] = [
     isContainer: true,
     defaultNode: { type: "dynamicLayout", name: "items", direction: "vertical", template: { type: "layout", direction: "vertical", children: [] } },
   },
+  {
+    type: "template",
+    label: "Template",
+    icon: "link",
+    description: "Reference a template",
+    isContainer: false,
+    defaultNode: { type: "template", name: "template" },
+  },
 ];
 
 export function getComponentDef(type: string): ComponentDef | undefined {

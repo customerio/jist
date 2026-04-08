@@ -24,7 +24,8 @@ private const val SUPPORTED_VERSION = "1"
  */
 @Composable
 fun JistView(
-    template: JistTemplate,
+    name: String,
+    templates: Map<String, List<JistTemplate>>,
     data: Map<String, JsonElement>,
     theme: JsonObject,
     mode: JistMode = JistMode.Auto,
@@ -32,7 +33,14 @@ fun JistView(
     onAction: ((JistActionEvent) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    if (template.version != SUPPORTED_VERSION) return
+    // Resolve: pick the template matching this renderer's supported version
+    val resolved = remember(templates) {
+        templates.mapNotNull { (key, versions) ->
+            versions.firstOrNull { it.version == SUPPORTED_VERSION }?.let { key to it }
+        }.toMap()
+    }
+
+    val template = resolved[name] ?: return
 
     val isDark = when (mode) {
         JistMode.Dark -> true
@@ -48,6 +56,7 @@ fun JistView(
         resolver = resolver,
         formatDate = formatDate,
         onAction = onAction,
-        modifier = modifier
+        modifier = modifier,
+        templates = resolved
     )
 }

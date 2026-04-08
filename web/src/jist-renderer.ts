@@ -75,6 +75,11 @@ export interface JistDynamicLayoutNode {
   template: JistNode;
 }
 
+export interface JistTemplateNode {
+  type: "template";
+  name: string;
+}
+
 export type JistNode =
   | JistLayoutNode
   | JistActionNode
@@ -83,7 +88,8 @@ export type JistNode =
   | JistDateNode
   | JistButtonNode
   | JistImageNode
-  | JistDynamicLayoutNode;
+  | JistDynamicLayoutNode
+  | JistTemplateNode;
 
 export interface JistTemplate {
   version: string;
@@ -117,6 +123,7 @@ export type JistOnAction = (event: JistActionEvent) => void;
 export interface JistRendererOptions {
   formatDate?: JistFormatDate;
   onAction?: JistOnAction;
+  templates?: Record<string, JistTemplate>;
 }
 
 // ── Constants ──────────────────────────────
@@ -156,13 +163,18 @@ function defaultFormatDate(iso: string): string {
 
 // ── Renderer ───────────────────────────────
 
+const MAX_TEMPLATE_DEPTH = 10;
+
 export default class JistRenderer {
   #formatDate: JistFormatDate;
   #onAction: JistOnAction | null;
+  #templates: Record<string, JistTemplate>;
+  #templateDepth = 0;
 
-  constructor({ formatDate, onAction }: JistRendererOptions = {}) {
+  constructor({ formatDate, onAction, templates }: JistRendererOptions = {}) {
     this.#formatDate = formatDate || defaultFormatDate;
     this.#onAction = onAction || null;
+    this.#templates = templates || {};
   }
 
   /**
@@ -188,6 +200,8 @@ export default class JistRenderer {
         return this.#buildImage(node, data);
       case "dynamicLayout":
         return this.#buildDynamicLayout(node, data);
+      case "template":
+        return this.#buildTemplate(node, data);
       default:
         return null; // Unknown component — skip (forward compatibility)
     }
@@ -368,6 +382,17 @@ export default class JistRenderer {
       if (childEl) el.appendChild(childEl);
     }
     return el;
+  }
+
+  // ── Ref (template reference) ───────────────
+
+  #buildTemplate(node: JistTemplateNode, data: JistData): HTMLElement | null {
+    const template = this.#templates[node.name];
+    if (!template || this.#templateDepth >= MAX_TEMPLATE_DEPTH) return null;
+    this.#templateDepth++;
+    const result = this.render(template.root, data);
+    this.#templateDepth--;
+    return result;
   }
 
   // ── Helpers ───────────────────────────────

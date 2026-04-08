@@ -24,6 +24,7 @@ public indirect enum JistNode: Codable, Sendable {
     case button(JistButtonNode)
     case image(JistImageNode)
     case dynamicLayout(JistDynamicLayoutNode)
+    case template(JistTemplateNode)
     case unknown
 
     enum CodingKeys: String, CodingKey {
@@ -42,7 +43,8 @@ public indirect enum JistNode: Codable, Sendable {
         case "button":  self = .button(try JistButtonNode(from: decoder))
         case "image":   self = .image(try JistImageNode(from: decoder))
         case "dynamicLayout": self = .dynamicLayout(try JistDynamicLayoutNode(from: decoder))
-        default:        self = .unknown
+        case "template":      self = .template(try JistTemplateNode(from: decoder))
+        default:              self = .unknown
         }
     }
 
@@ -55,8 +57,9 @@ public indirect enum JistNode: Codable, Sendable {
         case .date(let n):    try n.encode(to: encoder)
         case .button(let n):  try n.encode(to: encoder)
         case .image(let n):   try n.encode(to: encoder)
-        case .dynamicLayout(let n): try n.encode(to: encoder)
-        case .unknown:        break
+        case .dynamicLayout(let n):  try n.encode(to: encoder)
+        case .template(let n):      try n.encode(to: encoder)
+        case .unknown:              break
         }
     }
 }
@@ -157,6 +160,11 @@ public struct JistDynamicLayoutNode: Codable, Sendable {
     public var justify: String?
     public var margin: JistSpacing?
     public let template: JistNode
+}
+
+public struct JistTemplateNode: Codable, Sendable {
+    public let type: String
+    public let name: String
 }
 
 // MARK: - Action Event

@@ -24,11 +24,11 @@
     "eta": "ETA 12 min"
   },
   "action": {
-    "title": "Sarah Chen joined the team",
+    "heading": "Sarah Chen joined the team",
     "body": "Give her a warm welcome!",
     "avatar": "https://placehold.co/96x96/c7d2fe/4338ca.png?text=SC",
-    "timestamp": "2026-04-02T10:00:00Z",
-    "open": { "url": "/team/sarah-chen" }
+    "time": "2026-04-02T10:00:00Z",
+    "action": { "url": "/team/sarah-chen" }
   },
   "hero": {
     "title": "Alex Rivera",

@@ -44,17 +44,19 @@ for (const templateName of templateNames) {
 
       // Mount the template with data, theme, mode, and a deterministic formatDate
       await page.evaluate(
-        ({ tmpl, d, th, m }) => {
+        ({ name, tmpls, d, th, m }) => {
           const el = document.getElementById("target");
           // Set a deterministic formatDate before other properties trigger render
           el.formatDate = () => "Apr 1, 2026";
-          el.template = tmpl;
+          el.templates = tmpls;
+          el.template = name;
           el.data = d;
           el.theme = th;
           el.mode = m;
         },
         {
-          tmpl: templates[templateName],
+          name: templateName,
+          tmpls: templates,
           d: data[templateName],
           th: theme,
           m: mode,

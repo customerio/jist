@@ -11,7 +11,7 @@ import UIKit
 
 final class JistSnapshotTests: XCTestCase {
 
-    private var templates: [String: JistTemplate]!
+    private var templates: [String: [JistTemplate]]!
     private var dataMap: [String: [String: JistValue]]!
     private var theme: [String: JistValue]!
 
@@ -158,7 +158,7 @@ final class JistSnapshotTests: XCTestCase {
         testName: String = #function,
         line: UInt = #line
     ) {
-        guard let template = templates[key] else {
+        guard templates[key] != nil else {
             XCTFail("Missing template '\(key)'", file: file, line: line)
             return
         }
@@ -171,7 +171,8 @@ final class JistSnapshotTests: XCTestCase {
         let snapshotName = "\(key)-\(mode == .dark ? "dark" : "light")"
 
         let view = JistView(
-            template: template,
+            name: key,
+            templates: templates,
             data: withPlaceholderImages(data),
             theme: theme,
             mode: mode,

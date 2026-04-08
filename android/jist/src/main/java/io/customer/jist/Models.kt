@@ -84,6 +84,11 @@ sealed class JistNode {
         val template: JistNode
     ) : JistNode()
 
+    @Serializable
+    data class Template(
+        val name: String
+    ) : JistNode()
+
     data object Unknown : JistNode()
 }
 
@@ -139,6 +144,7 @@ internal object JistNodeSerializer : KSerializer<JistNode> {
                 "button" -> JistJson.decodeFromJsonElement<JistNode.Button>(element)
                 "image" -> JistJson.decodeFromJsonElement<JistNode.Image>(element)
                 "dynamicLayout" -> JistJson.decodeFromJsonElement<JistNode.DynamicLayout>(element)
+                "template" -> JistJson.decodeFromJsonElement<JistNode.Template>(element)
                 else -> JistNode.Unknown
             }
         } catch (_: Exception) {

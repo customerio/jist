@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "jist-template-schema.json",
   "title": "Jist Template",
   "description": "Defines a Jist template tree — a versioned JSON structure of layout containers and leaf components that a Jist renderer converts into native UI. Each component binds to data via its `name` property and can be styled via theme variants.",
   "type": "object",
@@ -8,8 +9,7 @@
     "$schema": { "type": "string" },
     "version": {
       "type": "string",
-      "enum": ["1"],
-      "description": "Spec version this template targets. The renderer silently skips templates with unsupported versions."
+      "description": "Spec version this template targets (e.g. \"1\", \"2\"). The renderer silently skips templates with unsupported versions."
     },
     "root": {
       "$ref": "#/definitions/layoutNode",
@@ -41,7 +41,8 @@
         { "$ref": "#/definitions/dateNode" },
         { "$ref": "#/definitions/buttonNode" },
         { "$ref": "#/definitions/imageNode" },
-        { "$ref": "#/definitions/dynamicLayoutNode" }
+        { "$ref": "#/definitions/dynamicLayoutNode" },
+        { "$ref": "#/definitions/templateNode" }
       ]
     },
 
@@ -261,6 +262,20 @@
         "template": {
           "$ref": "#/definitions/componentNode",
           "description": "A single node rendered once per item. Data binding within this node resolves against the current array item, not the top-level data. Use a layout node as the template to render multiple elements per item."
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "templateNode": {
+      "type": "object",
+      "description": "References a named template from the template registry. The referenced template's root node is rendered in place, using the current data context. Useful for reusing template fragments, especially within dynamicLayout.",
+      "required": ["type", "name"],
+      "properties": {
+        "type": { "const": "template" },
+        "name": {
+          "type": "string",
+          "description": "Name of the template to reference. Must match a key in the templates registry passed to the renderer."
         }
       },
       "additionalProperties": false

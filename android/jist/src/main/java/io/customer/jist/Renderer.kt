@@ -39,6 +39,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import java.time.format.FormatStyle
 
+private const val MAX_TEMPLATE_DEPTH = 10
+
 private val LocalJistTextAlign = compositionLocalOf { TextAlign.Start }
 
 private fun tightTextStyle(fontSize: TextUnit, fontWeight: FontWeight, color: Color) = TextStyle(
@@ -61,17 +63,20 @@ internal fun JistNodeView(
     resolver: JistThemeResolver,
     formatDate: ((String, String) -> String)?,
     onAction: ((JistActionEvent) -> Unit)?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    templates: Map<String, JistTemplate>? = null,
+    templateDepth: Int = 0
 ) {
     when (node) {
-        is JistNode.Layout -> JistLayoutView(node, data, resolver, formatDate, onAction, modifier)
-        is JistNode.Action -> JistActionView(node, data, resolver, formatDate, onAction, modifier)
+        is JistNode.Layout -> JistLayoutView(node, data, resolver, formatDate, onAction, modifier, templates, templateDepth)
+        is JistNode.Action -> JistActionView(node, data, resolver, formatDate, onAction, modifier, templates, templateDepth)
         is JistNode.Heading -> JistHeadingView(node, data, resolver, modifier)
         is JistNode.Text -> JistTextView(node, data, resolver, modifier)
         is JistNode.Date -> JistDateView(node, data, resolver, formatDate, modifier)
         is JistNode.Button -> JistButtonView(node, data, resolver, onAction, modifier)
         is JistNode.Image -> JistImageView(node, data, resolver, modifier)
-        is JistNode.DynamicLayout -> JistDynamicLayoutView(node, data, resolver, formatDate, onAction, modifier)
+        is JistNode.DynamicLayout -> JistDynamicLayoutView(node, data, resolver, formatDate, onAction, modifier, templates, templateDepth)
+        is JistNode.Template -> JistTemplateView(node, data, resolver, formatDate, onAction, modifier, templates, templateDepth)
         is JistNode.Unknown -> { }
     }
 }
@@ -85,7 +90,9 @@ private fun JistLayoutView(
     resolver: JistThemeResolver,
     formatDate: ((String, String) -> String)?,
     onAction: ((JistActionEvent) -> Unit)?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    templates: Map<String, JistTemplate>? = null,
+    templateDepth: Int = 0
 ) {
     val isVertical = node.direction == "vertical"
     val isStretch = node.align == null || node.align == "stretch"
@@ -105,7 +112,7 @@ private fun JistLayoutView(
                 modifier = modifier.then(marginMod)
             ) {
                 node.children.forEach { child ->
-                    JistNodeView(child, data, resolver, formatDate, onAction, Modifier.fillMaxWidth())
+                    JistNodeView(child, data, resolver, formatDate, onAction, Modifier.fillMaxWidth(), templates, templateDepth)
                 }
             }
         }
@@ -127,7 +134,7 @@ private fun JistLayoutView(
                     needsWeight && child is JistNode.Layout -> Modifier.weight(1f)
                     else -> Modifier
                 }
-                JistNodeView(child, data, resolver, formatDate, onAction, childMod)
+                JistNodeView(child, data, resolver, formatDate, onAction, childMod, templates, templateDepth)
             }
         }
     }
@@ -193,7 +200,9 @@ private fun JistActionView(
     resolver: JistThemeResolver,
     formatDate: ((String, String) -> String)?,
     onAction: ((JistActionEvent) -> Unit)?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    templates: Map<String, JistTemplate>? = null,
+    templateDepth: Int = 0
 ) {
     Box(
         modifier = modifier
@@ -214,7 +223,7 @@ private fun JistActionView(
     ) {
         Column {
             node.children.forEach { child ->
-                JistNodeView(child, data, resolver, formatDate, onAction)
+                JistNodeView(child, data, resolver, formatDate, onAction, templates = templates, templateDepth = templateDepth)
             }
         }
     }
@@ -394,7 +403,9 @@ private fun JistDynamicLayoutView(
     resolver: JistThemeResolver,
     formatDate: ((String, String) -> String)?,
     onAction: ((JistActionEvent) -> Unit)?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    templates: Map<String, JistTemplate>? = null,
+    templateDepth: Int = 0
 ) {
     val items = data[node.name] as? kotlinx.serialization.json.JsonArray ?: return
     val isVertical = (node.direction ?: "vertical") == "vertical"
@@ -409,7 +420,7 @@ private fun JistDynamicLayoutView(
         ) {
             items.forEach { item ->
                 val itemData = (item as? JsonObject)?.toMap() ?: emptyMap()
-                JistNodeView(node.template, itemData, resolver, formatDate, onAction, Modifier.fillMaxWidth())
+                JistNodeView(node.template, itemData, resolver, formatDate, onAction, Modifier.fillMaxWidth(), templates, templateDepth)
             }
         }
     } else {
@@ -420,10 +431,28 @@ private fun JistDynamicLayoutView(
         ) {
             items.forEach { item ->
                 val itemData = (item as? JsonObject)?.toMap() ?: emptyMap()
-                JistNodeView(node.template, itemData, resolver, formatDate, onAction)
+                JistNodeView(node.template, itemData, resolver, formatDate, onAction, templates = templates, templateDepth = templateDepth)
             }
         }
     }
+}
+
+// MARK: - Template
+
+@Composable
+private fun JistTemplateView(
+    node: JistNode.Template,
+    data: Map<String, JsonElement>,
+    resolver: JistThemeResolver,
+    formatDate: ((String, String) -> String)?,
+    onAction: ((JistActionEvent) -> Unit)?,
+    modifier: Modifier = Modifier,
+    templates: Map<String, JistTemplate>? = null,
+    templateDepth: Int = 0
+) {
+    if (templateDepth >= MAX_TEMPLATE_DEPTH) return
+    val template = templates?.get(node.name) ?: return
+    JistNodeView(template.root, data, resolver, formatDate, onAction, modifier, templates, templateDepth + 1)
 }
 
 // MARK: - Image

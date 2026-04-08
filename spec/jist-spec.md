@@ -67,6 +67,9 @@ A template is a JSON object with two required fields:
 - `button` — action button
 - `image` — image from URL
 
+**Reference nodes:**
+- `template` — references a named template from the template registry
+
 ---
 
 ### layout
@@ -168,7 +171,7 @@ A layout that repeats a single template node for each item in a data array. Comb
 
 Dynamic layout is structural, not themed — like layout, all visual properties come from the template node.
 
-**Example — notification inbox:**
+**Example — inline template:**
 
 ```json
 {
@@ -177,30 +180,29 @@ Dynamic layout is structural, not themed — like layout, all visual properties 
   "direction": "vertical",
   "gap": 12,
   "template": {
-    "type": "action",
-    "name": "action",
+    "type": "layout",
+    "direction": "horizontal",
+    "gap": 10,
+    "align": "center",
     "children": [
-      {
-        "type": "layout",
-        "direction": "horizontal",
-        "gap": 10,
-        "align": "center",
-        "children": [
-          { "type": "image", "name": "avatar", "width": 36, "height": 36, "objectFit": "cover", "borderRadius": 18 },
-          {
-            "type": "layout",
-            "direction": "vertical",
-            "gap": 2,
-            "children": [
-              { "type": "heading", "name": "heading", "variant": "h4" },
-              { "type": "text", "name": "body" }
-            ]
-          },
-          { "type": "date", "name": "time" }
-        ]
-      }
+      { "type": "heading", "name": "heading", "variant": "h4" },
+      { "type": "text", "name": "body" }
     ]
   }
+}
+```
+
+**Example — referencing a named template:**
+
+The `template` property can also reference a pre-defined template from the registry using a `template` node. This is useful for reusing template fragments across multiple views:
+
+```json
+{
+  "type": "dynamicLayout",
+  "name": "items",
+  "direction": "vertical",
+  "gap": 12,
+  "template": { "type": "template", "name": "action" }
 }
 ```
 
@@ -210,18 +212,14 @@ Dynamic layout is structural, not themed — like layout, all visual properties 
 {
   "items": [
     {
-      "avatar": "https://example.com/avatar1.png",
       "heading": "Jake Liu commented",
       "body": "Looks great, just one small tweak.",
-      "time": "2026-04-01T09:30:00Z",
-      "action": { "url": "/comments/42" }
+      "time": "2026-04-01T09:30:00Z"
     },
     {
-      "avatar": "https://example.com/avatar2.png",
       "heading": "Build failed",
       "body": "CI pipeline #287 failed.",
-      "time": "2026-04-01T08:15:00Z",
-      "action": { "url": "/builds/287" }
+      "time": "2026-04-01T08:15:00Z"
     }
   ]
 }
@@ -354,6 +352,61 @@ Width, height, objectFit, and borderRadius are template-level properties (not th
 
 ---
 
+### template
+
+References a named template from the template registry. The referenced template's root node is rendered in place, using the current data context. Particularly useful with `dynamicLayout` to reuse pre-defined template fragments.
+
+| Property | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `type` | `"template"` | Yes | | |
+| `name` | string | Yes | | Key in the template registry |
+
+**Template registry:** Renderers accept a map of named template arrays. Each name maps to an array of versioned templates. The renderer automatically picks the template matching its supported version (see [Version Resolution](#version-resolution)). The `template` node looks up its `name` in the resolved registry and renders the referenced template's root node.
+
+**Data binding:** The `template` node passes through the current data context to the referenced template. Inside a `dynamicLayout`, the scoped item data is forwarded.
+
+**Not rendered** if the named template is not found in the registry.
+
+**Platform API:**
+
+The `template` node resolves against the templates registry passed to the view. Each platform accepts a map of named template arrays as the primary input, with the view selecting which template to render by name:
+
+| Platform | API |
+|---|---|
+| Web | `el.templates = { "inbox": [{ version: "1", ... }] }; el.template = "inbox";` |
+| iOS | `JistView(name: "inbox", templates: ["inbox": [template1]])` |
+| Android | `JistView(name = "inbox", templates = mapOf("inbox" to listOf(template1)))` |
+
+**Example — reusable item template:**
+
+```json
+{
+  "type": "dynamicLayout",
+  "name": "items",
+  "direction": "vertical",
+  "gap": 12,
+  "template": { "type": "template", "name": "notification-item" }
+}
+```
+
+Where `notification-item` is a template registered in the template registry:
+
+```json
+{
+  "version": "1",
+  "root": {
+    "type": "action",
+    "name": "action",
+    "children": [
+      { "type": "heading", "name": "heading", "variant": "h4" },
+      { "type": "text", "name": "body" }
+    ]
+  }
+}
+```
+
+---
+
 ## Data Binding
 
 Components read content from the data object using their `name` property as the lookup key.
@@ -380,6 +433,7 @@ result:    renders "Hello World" as a heading
 | image | **Not rendered** (skipped) |
 | action | Rendered (children appear), data is null |
 | dynamicLayout | **Not rendered** (skipped) |
+| template | **Not rendered** if template not found in registry |
 
 ### Name as Style Hook
 
@@ -631,8 +685,8 @@ If the secondary button needs a distinct dark color, define it explicitly in `mo
 | Platform | Auto-detection | Manual override |
 |---|---|---|
 | Web | `prefers-color-scheme` media query | `<jist-template mode="dark">` attribute |
-| iOS | `@Environment(\.colorScheme)` | `JistView(mode: .dark)` |
-| Android | `isSystemInDarkTheme()` | `JistView(mode = JistMode.Dark)` |
+| iOS | `@Environment(\.colorScheme)` | `JistView(name: ..., templates: ..., mode: .dark)` |
+| Android | `isSystemInDarkTheme()` | `JistView(name = ..., templates = ..., mode = JistMode.Dark)` |
 
 **Web implementation:** The theme flattener sets `--jist-*` custom properties as inline styles on the `<jist-template>` element. Numeric values are suffixed with `px` (except unitless properties like `fontWeight`, `maxLines`, `lineHeight`). When dark mode is active, the dark overrides are flattened on top of the base values, replacing them.
 
@@ -723,8 +777,31 @@ Each template declares the spec version it targets:
 
 1. Version is a string (e.g., `"1"`, `"2"`)
 2. If the renderer does not support the template's version, it **returns null/nil/empty** — the template is silently skipped
-3. The server negotiates versions: it serves templates matching the renderer version the client advertises
+3. The server can serve multiple versions of the same template; the renderer automatically selects the one it supports
 4. **Within a version**, the spec is backwards-compatible — new optional properties may be added, but existing behavior is not changed
+
+### Version Resolution
+
+The templates registry maps each template name to an **array** of versioned templates. This allows the server to provide multiple versions of the same template (e.g., a v1 and v2 layout for "notification"), and the renderer automatically picks the one matching its supported version.
+
+```json
+{
+  "notification": [
+    { "version": "1", "root": { "type": "layout", ... } },
+    { "version": "2", "root": { "type": "layout", ... } }
+  ]
+}
+```
+
+**Resolution algorithm:** At initialization, the view iterates each name's array and selects the first template whose `version` matches the renderer's `SUPPORTED_VERSION` constant (currently `"1"`). Unmatched templates are silently ignored. This resolved single-template-per-name map is used internally for rendering and for `template` node lookups.
+
+| Platform | Input type | Internal (resolved) type |
+|---|---|---|
+| Web | `Record<string, JistTemplate[]>` | `Record<string, JistTemplate>` |
+| iOS | `[String: [JistTemplate]]` | `[String: JistTemplate]` |
+| Android | `Map<String, List<JistTemplate>>` | `Map<String, JistTemplate>` |
+
+This design keeps version logic at the entry point and out of the rendering pipeline. Renderers, `template` nodes, and `dynamicLayout` all work with already-resolved templates.
 
 ### Forward Compatibility
 
@@ -750,6 +827,7 @@ Each component has accessibility requirements that all platform implementations 
 | action | Button role, keyboard/switch-control focusable, accessible label derived from children text |
 | image | Alt text derived from data (e.g., `data["title"]`) |
 | dynamicLayout | No semantic role (structural only) |
+| template | No semantic role (delegates to referenced template) |
 | layout | No semantic role (structural only) |
 
 ---
@@ -773,20 +851,21 @@ Each component has accessibility requirements that all platform implementations 
 
 ```html
 <jist-template
-  template='{ "version": "1", "root": { ... } }'
+  template="inbox"
   data='{ "title": "Hello" }'
   theme='{ "heading": { ... } }'
   mode="auto"
 ></jist-template>
 ```
 
-The `mode` attribute accepts `"auto"` (default — follows system preference), `"light"`, or `"dark"`.
+The `template` attribute is a string name that references a template in the `templates` registry. The `mode` attribute accepts `"auto"` (default — follows system preference), `"light"`, or `"dark"`.
 
 Programmatic API:
 
 ```js
 const el = document.createElement("jist-template");
-el.template = templateObj;
+el.templates = allTemplates; // Record<string, JistTemplate[]>
+el.template = "inbox";       // name of template to render
 el.data = dataObj;
 el.theme = themeObj;
 el.mode = "auto"; // "auto" | "light" | "dark"
@@ -844,7 +923,8 @@ import Jist
 struct ContentView: View {
     var body: some View {
         JistView(
-            template: template,
+            name: "basic",
+            templates: allTemplates,
             data: ["title": "Hello", "body": "World"],
             theme: theme,
             formatDate: { iso, name in "2 hours ago" },
@@ -900,9 +980,10 @@ struct ContentView: View {
 import io.customer.jist.JistView
 
 @Composable
-fun NotificationCard(template: JistTemplate, data: Map<String, Any?>) {
+fun NotificationCard(name: String, templates: Map<String, JistTemplate>, data: Map<String, Any?>) {
     JistView(
-        template = template,
+        name = name,
+        templates = templates,
         data = data,
         theme = theme,
         formatDate = { iso, name -> "2 hours ago" },
@@ -1046,11 +1127,12 @@ This template renders identically on all three platforms — a vertical card wit
 
 ## JSON Schemas
 
-Two JSON Schema (draft-07) files validate templates and themes:
+Three JSON Schema (draft-07) files validate templates, registries, and themes:
 
 | Schema | File | Purpose |
 |---|---|---|
-| Template | `jist-template-schema.json` | Validates template structure — version, root node, all component types with their properties |
+| Template | `jist-template-schema.json` | Validates a single template — version, root node, all component types with their properties |
+| Registry | `jist-template-registry-schema.json` | Validates a template registry — map of names to arrays of versioned templates |
 | Theme | `jist-theme-schema.json` | Validates theme configuration — style properties, variants, interaction states, color modes |
 
 Reference them in JSON files via `$schema`:
@@ -1063,9 +1145,20 @@ Reference them in JSON files via `$schema`:
 }
 ```
 
+```json
+{
+  "$schema": "./jist-template-registry-schema.json",
+  "notification": [
+    { "version": "1", "root": { ... } },
+    { "version": "2", "root": { ... } }
+  ]
+}
+```
+
 The schemas include rich descriptions on every property, making them useful for AI agents building templates programmatically. Key design points:
 
-- **Template schema** uses `oneOf` discriminated by `type` to enforce valid node structures
+- **Template schema** uses `oneOf` discriminated by `type` to enforce valid node structures. The `version` field accepts any string — not constrained to a specific version — so templates can target future spec versions
+- **Registry schema** uses `additionalProperties` with `$ref` to validate that each name maps to an array of templates
 - **Theme schema** uses `additionalProperties` with `$ref` to allow arbitrary named variants while enforcing variant structure
 - Hex colors are validated via regex pattern (`#RRGGBB` or `#RRGGBBAA`)
 - Heading variants are constrained to `["h2", "h3", "h4"]`; button/text variants accept any string

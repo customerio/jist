@@ -119,7 +119,7 @@ This renders identically on all three platforms. The theme adapts to light/dark 
 <script type="module" src="jist-element.js"></script>
 
 <jist-template
-  template='{ "version": "1", "root": { ... } }'
+  template="inbox"
   data='{ "title": "Hello" }'
   theme='{ "heading": { ... } }'
   mode="auto"
@@ -128,6 +128,8 @@ This renders identically on all three platforms. The theme adapts to light/dark 
 
 ```js
 const el = document.querySelector("jist-template");
+el.templates = allTemplates; // Record<string, JistTemplate[]>
+el.template = "inbox";       // name of template to render
 el.formatDate = (iso, name) => new Date(iso).toLocaleDateString();
 el.onAction = (event) => console.log(event);
 ```
@@ -140,7 +142,8 @@ Add the Swift package from the `ios/` directory, then:
 import Jist
 
 JistView(
-    template: template,
+    name: "basic",
+    templates: allTemplates,
     data: ["title": "Hello", "body": "World"],
     theme: theme,
     formatDate: { iso, name in "2 hours ago" },
@@ -154,7 +157,8 @@ JistView(
 import io.customer.jist.JistView
 
 JistView(
-    template = template,
+    name = "basic",
+    templates = allTemplates,
     data = data,
     theme = theme,
     formatDate = { iso, name -> "2 hours ago" },
@@ -170,6 +174,7 @@ JistView(
 |-----------|-------------|
 | `layout` | Arranges children along a vertical or horizontal axis |
 | `action` | Wraps children in a clickable region |
+| `dynamicLayout` | Repeats a template node for each item in a data array |
 
 **Leaf nodes** render content from data:
 
@@ -180,6 +185,7 @@ JistView(
 | `date` | Formatted timestamp via `formatDate` callback |
 | `button` | Action button (skipped if data absent) |
 | `image` | Image from URL (skipped if data absent) |
+| `template` | References a named template from the registry |
 
 ## Theme & color modes
 

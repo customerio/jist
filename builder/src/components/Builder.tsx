@@ -8,7 +8,7 @@ import {
   type DragEndEvent,
   pointerWithin,
 } from "@dnd-kit/core";
-import { useBuilderStore } from "@/store/builder-store";
+import { useBuilderStore, selectActiveData } from "@/store/builder-store";
 import { isDescendant } from "@/lib/template-utils";
 import { getComponentDef } from "@/lib/component-defs";
 import { ComponentPalette } from "./ComponentPalette";
@@ -57,21 +57,29 @@ function Toolbar() {
     setColorMode,
     sampleNames,
     loadSample,
+    loadAllSamples,
     newTemplate,
-    template,
-    data,
+    registry,
+    dataMap,
     theme,
   } = useBuilderStore();
 
   const [sampleOpen, setSampleOpen] = useState(false);
+  const hasTemplates = Object.keys(registry).length > 0;
+
+  const handleNew = () => {
+    const name = prompt("Template name:");
+    if (!name?.trim()) return;
+    newTemplate(name.trim());
+  };
 
   const handleExport = () => {
-    const exported = { template, data, theme };
+    const exported = { templates: registry, data: dataMap, theme };
     const blob = new Blob([JSON.stringify(exported, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "jist-template.json";
+    a.download = "jist-templates.json";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -86,7 +94,7 @@ function Toolbar() {
 
       {/* New template */}
       <button
-        onClick={newTemplate}
+        onClick={handleNew}
         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md
           border border-border text-foreground hover:bg-surface-hover transition-colors"
       >
@@ -108,6 +116,15 @@ function Toolbar() {
           <>
             <div className="fixed inset-0 z-10" onClick={() => setSampleOpen(false)} />
             <div className="absolute top-full left-0 mt-1 w-48 py-1 rounded-lg border border-border bg-background shadow-lg z-20">
+              <button
+                onClick={() => {
+                  loadAllSamples();
+                  setSampleOpen(false);
+                }}
+                className="w-full text-left px-3 py-1.5 text-sm font-medium hover:bg-surface-hover transition-colors border-b border-border"
+              >
+                Load All
+              </button>
               {sampleNames.map((name) => (
                 <button
                   key={name}
@@ -126,7 +143,7 @@ function Toolbar() {
       </div>
 
       {/* Export */}
-      {template && (
+      {hasTemplates && (
         <button
           onClick={handleExport}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md
@@ -155,6 +172,70 @@ function Toolbar() {
         )}
       </button>
     </header>
+  );
+}
+
+/* ── Template tabs ──────────────────────────────── */
+
+function TemplateTabs() {
+  const { registry, activeTemplateName, selectTemplate, addTemplate, removeTemplate } =
+    useBuilderStore();
+
+  const names = Object.keys(registry);
+
+  if (names.length === 0) return null;
+
+  const handleAdd = () => {
+    const name = prompt("Template name:");
+    if (!name?.trim()) return;
+    if (registry[name.trim()]) {
+      alert("A template with that name already exists.");
+      return;
+    }
+    addTemplate(name.trim());
+  };
+
+  return (
+    <div className="flex items-center gap-0.5 px-3 py-1 border-b border-border bg-surface overflow-x-auto shrink-0">
+      {names.map((name) => (
+        <div
+          key={name}
+          className={`group flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer transition-colors ${
+            name === activeTemplateName
+              ? "bg-primary text-white"
+              : "text-muted hover:text-foreground hover:bg-surface-hover"
+          }`}
+          onClick={() => selectTemplate(name)}
+        >
+          <span>{name}</span>
+          {names.length > 1 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                removeTemplate(name);
+              }}
+              className={`ml-0.5 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity ${
+                name === activeTemplateName
+                  ? "hover:bg-white/20"
+                  : "hover:bg-surface-hover"
+              }`}
+              title={`Remove ${name}`}
+            >
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      ))}
+      <button
+        onClick={handleAdd}
+        className="flex items-center px-1.5 py-1 text-muted hover:text-foreground rounded-md hover:bg-surface-hover transition-colors"
+        title="Add template"
+      >
+        <PlusIcon className="w-3.5 h-3.5" />
+      </button>
+    </div>
   );
 }
 
@@ -325,6 +406,9 @@ function CenterPanel() {
           ))}
         </div>
       </div>
+
+      {/* Template tabs */}
+      <TemplateTabs />
 
       {/* Content */}
       <div className="flex-1 min-h-0">

@@ -4,7 +4,8 @@ import SwiftUI
 ///
 /// ```swift
 /// JistView(
-///     template: template,
+///     name: "basic",
+///     templates: allTemplates,
 ///     data: ["title": .string("Hello")],
 ///     theme: theme,
 ///     formatDate: { iso, name in "2 hours ago" },
@@ -12,24 +13,36 @@ import SwiftUI
 /// )
 /// ```
 public struct JistView: View {
-    private let template: JistTemplate
+    private let name: String
+    private let templates: [String: JistTemplate]
     private let data: [String: JistValue]
     private let theme: [String: JistValue]
     private let mode: JistMode
     private let formatDate: ((String, String) -> String)?
     private let onAction: ((JistActionEvent) -> Void)?
 
+    private static let supportedVersion = "1"
+
     @Environment(\.colorScheme) private var colorScheme
 
     public init(
-        template: JistTemplate,
+        name: String,
+        templates: [String: [JistTemplate]],
         data: [String: JistValue],
         theme: [String: JistValue],
         mode: JistMode = .auto,
         formatDate: ((String, String) -> String)? = nil,
         onAction: ((JistActionEvent) -> Void)? = nil
     ) {
-        self.template = template
+        self.name = name
+        // Resolve: pick the template matching this renderer's supported version
+        var resolved: [String: JistTemplate] = [:]
+        for (key, versions) in templates {
+            if let match = versions.first(where: { $0.version == Self.supportedVersion }) {
+                resolved[key] = match
+            }
+        }
+        self.templates = resolved
         self.data = data
         self.theme = theme
         self.mode = mode
@@ -38,7 +51,7 @@ public struct JistView: View {
     }
 
     public var body: some View {
-        if template.version == supportedVersion {
+        if let template = templates[name] {
             let isDark = resolveDarkMode()
             let resolver = JistThemeResolver(theme: theme, isDark: isDark)
 
@@ -47,12 +60,11 @@ public struct JistView: View {
                 data: data,
                 resolver: resolver,
                 formatDate: formatDate,
-                onAction: onAction
+                onAction: onAction,
+                templates: templates
             )
         }
     }
-
-    private let supportedVersion = "1"
 
     private func resolveDarkMode() -> Bool {
         switch mode {

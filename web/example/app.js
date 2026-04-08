@@ -46,7 +46,8 @@ function onAction({ component, name, data, meta }) {
 
 function mount(id, templateKey, dataKey) {
   const el = document.getElementById(id);
-  el.template = templates[templateKey];
+  el.templates = templates;
+  el.template = templateKey;
   el.data = data[dataKey];
   el.theme = theme;
   el.formatDate = formatDate;

@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Jist Template Registry",
+  "description": "A map of named template arrays. Each name maps to an array of versioned templates. The renderer picks the template matching its supported version at initialization.",
+  "type": "object",
+  "properties": {
+    "$schema": { "type": "string" }
+  },
+  "additionalProperties": {
+    "type": "array",
+    "items": { "$ref": "jist-template-schema.json" },
+    "minItems": 1,
+    "description": "Array of versioned templates for this name. The renderer selects the first template whose version it supports."
+  }
+}

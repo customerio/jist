@@ -29,21 +29,25 @@ enum TestFixtures {
     /// Template keys to test (excludes liveActivity).
     static let templateKeys = ["basic", "image", "cta", "action", "hero", "inbox", "profile", "announcement"]
 
-    /// Parses `templates.json` and returns each template keyed by name.
-    static func loadTemplates() -> [String: JistTemplate] {
+    /// Parses `templates.json` and returns versioned template arrays keyed by name.
+    static func loadTemplates() -> [String: [JistTemplate]] {
         let data = loadData("templates.json")
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             fatalError("templates.json is not a valid JSON object")
         }
-        var result: [String: JistTemplate] = [:]
+        var result: [String: [JistTemplate]] = [:]
         let decoder = JSONDecoder()
         for key in templateKeys {
-            guard let value = json[key] else { continue }
-            guard let templateData = try? JSONSerialization.data(withJSONObject: value) else { continue }
-            guard let template = try? decoder.decode(JistTemplate.self, from: templateData) else {
-                fatalError("Failed to decode template '\(key)'")
+            guard let versions = json[key] as? [Any] else { continue }
+            var templates: [JistTemplate] = []
+            for version in versions {
+                guard let templateData = try? JSONSerialization.data(withJSONObject: version) else { continue }
+                guard let template = try? decoder.decode(JistTemplate.self, from: templateData) else {
+                    fatalError("Failed to decode template '\(key)'")
+                }
+                templates.append(template)
             }
-            result[key] = template
+            result[key] = templates
         }
         return result
     }

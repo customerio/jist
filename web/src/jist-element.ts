@@ -32,22 +32,23 @@ interface ThemeObject {
 class JistTemplateElement extends HTMLElement {
   static observedAttributes = ["template", "data", "theme", "mode"];
 
-  #template: JistTemplate | null = null;
+  #template: string | null = null;
   #data: JistData | null = null;
   #theme: ThemeObject | null = null;
   #mode: JistMode = "auto";
   #formatDate: JistFormatDate | null = null;
   #onAction: JistOnAction | null = null;
+  #templates: Record<string, JistTemplate> = {};
   #mediaQuery: MediaQueryList | null = null;
   #mediaHandler: (() => void) | null = null;
 
   // ── Property API ──────────────────────────
 
-  get template(): JistTemplate | null {
+  get template(): string | null {
     return this.#template;
   }
-  set template(val: JistTemplate | string | null) {
-    this.#template = typeof val === "string" ? JSON.parse(val) : val;
+  set template(val: string | null) {
+    this.#template = val;
     this.#render();
   }
 
@@ -91,6 +92,23 @@ class JistTemplateElement extends HTMLElement {
     this.#onAction = fn;
   }
 
+  get templates(): Record<string, JistTemplate> {
+    return this.#templates;
+  }
+  set templates(val: Record<string, JistTemplate[]> | string) {
+    const raw = typeof val === "string" ? JSON.parse(val) : (val || {});
+    const resolved: Record<string, JistTemplate> = {};
+    for (const [name, value] of Object.entries(raw)) {
+      if (name.startsWith("$")) continue;
+      if (!Array.isArray(value)) continue;
+      const versions = value;
+      const match = versions.find((t: JistTemplate) => t.version === SUPPORTED_VERSION);
+      if (match) resolved[name] = match;
+    }
+    this.#templates = resolved;
+    this.#render();
+  }
+
   // ── Lifecycle ─────────────────────────────
 
   connectedCallback(): void {
@@ -121,7 +139,7 @@ class JistTemplateElement extends HTMLElement {
     if (oldVal === newVal) return;
     switch (name) {
       case "template":
-        this.#template = newVal ? JSON.parse(newVal) : null;
+        this.#template = newVal || null;
         this.#render();
         break;
       case "data":
@@ -197,14 +215,15 @@ class JistTemplateElement extends HTMLElement {
     if (!this.#template || !this.#data) return;
     if (!this.isConnected) return;
 
-    // Version check — silently skip unsupported templates
-    if (this.#template.version !== SUPPORTED_VERSION) {
+    const tmpl = this.#templates[this.#template];
+    if (!tmpl) {
       this.innerHTML = "";
       return;
     }
 
     const renderer = new JistRenderer({
       formatDate: this.#formatDate || undefined,
+      templates: this.#templates,
       onAction: (detail: JistActionEvent) => {
         // Property callback
         if (this.#onAction) this.#onAction(detail);
@@ -225,7 +244,7 @@ class JistTemplateElement extends HTMLElement {
     });
 
     this.innerHTML = "";
-    const dom = renderer.render(this.#template.root, this.#data);
+    const dom = renderer.render(tmpl.root, this.#data);
     if (dom) this.appendChild(dom);
   }
 }

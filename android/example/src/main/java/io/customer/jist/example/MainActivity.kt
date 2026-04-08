@@ -34,12 +34,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun loadTemplates(): Map<String, JistTemplate> {
+    private fun loadTemplates(): Map<String, List<JistTemplate>> {
         val json = resources.openRawResource(R.raw.templates).bufferedReader().readText()
         val obj = Json.parseToJsonElement(json).jsonObject
         val config = Json { ignoreUnknownKeys = true }
         return obj.filterKeys { !it.startsWith("$") }
-            .mapValues { config.decodeFromJsonElement<JistTemplate>(it.value) }
+            .mapValues { (_, value) ->
+                value.jsonArray.map { config.decodeFromJsonElement<JistTemplate>(it) }
+            }
     }
 
     private fun loadData(): Map<String, JsonObject> {
@@ -57,7 +59,7 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExampleScreen(
-    templates: Map<String, JistTemplate>,
+    templates: Map<String, List<JistTemplate>>,
     dataEntries: Map<String, JsonObject>,
     theme: JsonObject
 ) {
@@ -89,7 +91,7 @@ fun ExampleScreen(
                     .padding(padding)
             ) {
                 items(templateOrder) { key ->
-                    val template = templates[key] ?: return@items
+                    if (templates[key].isNullOrEmpty()) return@items
                     val data = dataEntries[key] ?: return@items
 
                     Card(
@@ -102,7 +104,8 @@ fun ExampleScreen(
                         )
                     ) {
                         JistView(
-                            template = template,
+                            name = key,
+                            templates = templates,
                             data = data,
                             theme = theme,
                             mode = if (isDarkMode) JistMode.Dark else JistMode.Light,

@@ -3,7 +3,7 @@ import SwiftUI
 import Jist
 
 struct ContentView: View {
-    let templates: [String: JistTemplate]
+    let templates: [String: [JistTemplate]]
     let dataEntries: [String: [String: JistValue]]
     let theme: [String: JistValue]
 
@@ -26,9 +26,9 @@ struct ContentView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     ForEach(templateOrder, id: \.self) { key in
-                        if let template = templates[key],
+                        if templates[key] != nil,
                            let data = dataEntries[key] {
-                            cardView(key: key, template: template, data: data)
+                            cardView(key: key, data: data)
                         }
                     }
 
@@ -50,9 +50,10 @@ struct ContentView: View {
         .navigationViewStyle(.stack)
     }
 
-    private func cardView(key: String, template: JistTemplate, data: [String: JistValue]) -> some View {
+    private func cardView(key: String, data: [String: JistValue]) -> some View {
         JistView(
-            template: template,
+            name: key,
+            templates: templates,
             data: data,
             theme: theme,
             mode: isDarkMode ? .dark : .light,
@@ -99,7 +100,7 @@ struct ContentView: View {
 
     private func startLiveActivity() {
         guard currentActivity == nil,
-              let template = templates["liveActivity"] else { return }
+              let template = templates["liveActivity"]?.first(where: { $0.version == "1" }) else { return }
 
         let encoder = JSONEncoder()
         guard let templateJSON = try? String(data: encoder.encode(template), encoding: .utf8),

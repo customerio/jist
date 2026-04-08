@@ -16,6 +16,7 @@ import coil3.asImage
 import coil3.test.FakeImageLoaderEngine
 import com.android.ide.common.rendering.api.SessionParams
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import org.junit.Before
 import org.junit.Rule
@@ -52,10 +53,10 @@ class SnapshotTests {
     private fun loadResource(name: String): String =
         javaClass.classLoader!!.getResourceAsStream(name)!!.bufferedReader().readText()
 
-    private val allTemplates: Map<String, JistTemplate> by lazy {
+    private val allTemplates: Map<String, List<JistTemplate>> by lazy {
         val obj = JistJson.parseToJsonElement(loadResource("templates.json")).jsonObject
         listOf("basic", "image", "cta", "action", "hero", "inbox", "profile", "announcement").associateWith { key ->
-            JistJson.decodeFromJsonElement(JistTemplate.serializer(), obj[key]!!)
+            obj[key]!!.jsonArray.map { JistJson.decodeFromJsonElement(JistTemplate.serializer(), it) }
         }
     }
 
@@ -72,7 +73,8 @@ class SnapshotTests {
         paparazzi.snapshot {
             Box(modifier = Modifier.background(bg).padding(16.dp)) {
                 JistView(
-                    template = allTemplates[templateKey]!!,
+                    name = templateKey,
+                    templates = allTemplates,
                     data = allData[templateKey]!!.jsonObject,
                     theme = theme,
                     mode = mode,

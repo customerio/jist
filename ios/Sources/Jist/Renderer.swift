@@ -1,5 +1,7 @@
 import SwiftUI
 
+private let maxTemplateDepth = 10
+
 // MARK: - Node Dispatcher
 
 struct JistNodeView: View {
@@ -8,13 +10,15 @@ struct JistNodeView: View {
     let resolver: JistThemeResolver
     let formatDate: ((String, String) -> String)?
     let onAction: ((JistActionEvent) -> Void)?
+    let templates: [String: JistTemplate]?
+    var templateDepth: Int = 0
 
     var body: some View {
         switch node {
         case .layout(let n):
-            JistLayoutView(node: n, data: data, resolver: resolver, formatDate: formatDate, onAction: onAction)
+            JistLayoutView(node: n, data: data, resolver: resolver, formatDate: formatDate, onAction: onAction, templates: templates, templateDepth: templateDepth)
         case .action(let n):
-            JistActionView(node: n, data: data, resolver: resolver, formatDate: formatDate, onAction: onAction)
+            JistActionView(node: n, data: data, resolver: resolver, formatDate: formatDate, onAction: onAction, templates: templates, templateDepth: templateDepth)
         case .heading(let n):
             JistHeadingView(node: n, data: data, resolver: resolver)
         case .text(let n):
@@ -26,7 +30,9 @@ struct JistNodeView: View {
         case .image(let n):
             JistImageView(node: n, data: data, resolver: resolver)
         case .dynamicLayout(let n):
-            JistDynamicLayoutView(node: n, data: data, resolver: resolver, formatDate: formatDate, onAction: onAction)
+            JistDynamicLayoutView(node: n, data: data, resolver: resolver, formatDate: formatDate, onAction: onAction, templates: templates, templateDepth: templateDepth)
+        case .template(let n):
+            JistTemplateView(node: n, data: data, resolver: resolver, formatDate: formatDate, onAction: onAction, templates: templates, templateDepth: templateDepth)
         case .unknown:
             EmptyView()
         }
@@ -41,6 +47,8 @@ struct JistLayoutView: View {
     let resolver: JistThemeResolver
     let formatDate: ((String, String) -> String)?
     let onAction: ((JistActionEvent) -> Void)?
+    let templates: [String: JistTemplate]?
+    var templateDepth: Int = 0
 
     private var isVertical: Bool { node.direction == "vertical" }
     private var justify: String { node.justify ?? "start" }
@@ -118,7 +126,7 @@ struct JistLayoutView: View {
 
     @ViewBuilder
     private func childView(_ child: JistNode) -> some View {
-        let view = JistNodeView(node: child, data: data, resolver: resolver, formatDate: formatDate, onAction: onAction)
+        let view = JistNodeView(node: child, data: data, resolver: resolver, formatDate: formatDate, onAction: onAction, templates: templates, templateDepth: templateDepth)
         if isVertical {
             view.frame(maxWidth: .infinity, alignment: frameAlignment)
                 .multilineTextAlignment(textAlignment)
@@ -154,6 +162,8 @@ struct JistActionView: View {
     let resolver: JistThemeResolver
     let formatDate: ((String, String) -> String)?
     let onAction: ((JistActionEvent) -> Void)?
+    let templates: [String: JistTemplate]?
+    var templateDepth: Int = 0
 
     var body: some View {
         Button {
@@ -165,7 +175,7 @@ struct JistActionView: View {
             ))
         } label: {
             ForEach(0..<node.children.count, id: \.self) { i in
-                JistNodeView(node: node.children[i], data: data, resolver: resolver, formatDate: formatDate, onAction: onAction)
+                JistNodeView(node: node.children[i], data: data, resolver: resolver, formatDate: formatDate, onAction: onAction, templates: templates, templateDepth: templateDepth)
             }
         }
         .buttonStyle(.plain)
@@ -378,6 +388,8 @@ struct JistDynamicLayoutView: View {
     let resolver: JistThemeResolver
     let formatDate: ((String, String) -> String)?
     let onAction: ((JistActionEvent) -> Void)?
+    let templates: [String: JistTemplate]?
+    var templateDepth: Int = 0
 
     private var isVertical: Bool { (node.direction ?? "vertical") == "vertical" }
 
@@ -408,7 +420,7 @@ struct JistDynamicLayoutView: View {
     @ViewBuilder
     private func itemView(_ item: JistValue) -> some View {
         let itemData = item.objectValue ?? [:]
-        JistNodeView(node: node.template, data: itemData, resolver: resolver, formatDate: formatDate, onAction: onAction)
+        JistNodeView(node: node.template, data: itemData, resolver: resolver, formatDate: formatDate, onAction: onAction, templates: templates, templateDepth: templateDepth)
     }
 
     private var vAlignment: HorizontalAlignment {
@@ -426,6 +438,25 @@ struct JistDynamicLayoutView: View {
         case "center":   return .center
         case "baseline": return .firstTextBaseline
         default:         return .center
+        }
+    }
+}
+
+// MARK: - Template
+
+struct JistTemplateView: View {
+    let node: JistTemplateNode
+    let data: [String: JistValue]
+    let resolver: JistThemeResolver
+    let formatDate: ((String, String) -> String)?
+    let onAction: ((JistActionEvent) -> Void)?
+    let templates: [String: JistTemplate]?
+    var templateDepth: Int = 0
+
+    var body: some View {
+        if templateDepth < maxTemplateDepth,
+           let template = templates?[node.name] {
+            JistNodeView(node: template.root, data: data, resolver: resolver, formatDate: formatDate, onAction: onAction, templates: templates, templateDepth: templateDepth + 1)
         }
     }
 }

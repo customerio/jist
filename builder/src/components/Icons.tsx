@@ -53,6 +53,12 @@ export function AlertIcon({ className }: { className?: string }) {
 export function GripIcon({ className }: { className?: string }) {
   return <svg {...s} className={className}><circle cx="9" cy="5" r="1" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="9" cy="19" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="5" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="19" r="1" fill="currentColor" stroke="none"/></svg>;
 }
+export function ListIcon({ className }: { className?: string }) {
+  return <svg {...s} className={className}><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>;
+}
+export function LinkIcon({ className }: { className?: string }) {
+  return <svg {...s} className={className}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>;
+}
 export function DownloadIcon({ className }: { className?: string }) {
   return <svg {...s} className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
 }
@@ -68,6 +74,8 @@ const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
   square: SquareIcon,
   image: ImageIcon,
   pointer: PointerIcon,
+  list: ListIcon,
+  link: LinkIcon,
 };
 
 export function ComponentIcon({ icon, className }: { icon: string; className?: string }) {
