@@ -30,31 +30,35 @@ Templates are version-tagged JSON. Renderers that don't support a template's ver
 
 A vertical card with a heading, full-width image, body text, and a bottom row containing a date and secondary button:
 
-**Template:**
+**Templates (registry):**
 
 ```json
 {
-  "version": "1",
-  "root": {
-    "type": "layout",
-    "direction": "vertical",
-    "gap": 8,
-    "children": [
-      { "type": "heading", "name": "title", "variant": "h3" },
-      { "type": "image", "name": "media", "width": "fill", "objectFit": "cover", "borderRadius": 6 },
-      { "type": "text", "name": "body" },
-      {
+  "inbox": [
+    {
+      "version": "1",
+      "root": {
         "type": "layout",
-        "direction": "horizontal",
-        "align": "center",
-        "justify": "space-between",
+        "direction": "vertical",
+        "gap": 8,
         "children": [
-          { "type": "date", "name": "timestamp" },
-          { "type": "button", "name": "cta", "variant": "secondary" }
+          { "type": "heading", "name": "title", "variant": "h3" },
+          { "type": "image", "name": "media", "width": "fill", "objectFit": "cover", "borderRadius": 6 },
+          { "type": "text", "name": "body" },
+          {
+            "type": "layout",
+            "direction": "horizontal",
+            "align": "center",
+            "justify": "space-between",
+            "children": [
+              { "type": "date", "name": "timestamp" },
+              { "type": "button", "name": "cta", "variant": "secondary" }
+            ]
+          }
         ]
       }
-    ]
-  }
+    }
+  ]
 }
 ```
 
@@ -207,6 +211,7 @@ jist/
 ├── spec/               # Specification and JSON schemas
 │   ├── jist-spec.md
 │   ├── jist-template-schema.json
+│   ├── jist-template-registry-schema.json
 │   └── jist-theme-schema.json
 ├── shared/             # Shared fixtures (used by tests and example apps)
 │   ├── templates.json
@@ -236,6 +241,7 @@ Every platform tests the same combinations:
 | basic        | ✓     | ✓    |
 | image        | ✓     | ✓    |
 | cta          | ✓     | ✓    |
+| liveActivity | ✓     | ✓    |
 | action       | ✓     | ✓    |
 | hero         | ✓     | ✓    |
 | inbox        | ✓     | ✓    |
