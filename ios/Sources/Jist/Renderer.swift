@@ -196,11 +196,16 @@ struct JistHeadingView: View {
         let variant = node.variant ?? "h3"
         let text = data[name]?.stringValue ?? ""
 
-        Text(text)
-            .font(.system(
-                size: resolver.resolveNumber(type: "heading", variant: variant, group: "text", property: "fontSize", fallback: defaultSize(variant)),
-                weight: JistThemeResolver.fontWeight(from: resolver.resolveNumber(type: "heading", variant: variant, group: "text", property: "fontWeight", fallback: 600))
-            ))
+        let headingSize = resolver.resolveNumber(type: "heading", variant: variant, group: "text", property: "fontSize", fallback: defaultSize(variant))
+        let headingWeight = JistThemeResolver.fontWeight(from: resolver.resolveNumber(type: "heading", variant: variant, group: "text", property: "fontWeight", fallback: 600))
+        let headingTracking = resolver.resolveNumber(type: "heading", variant: variant, group: "text", property: "letterSpacing", fallback: 0)
+        let headingLineHeight = resolver.resolve(type: "heading", variant: variant, group: "text", property: "lineHeight")?.numberValue
+            .flatMap { $0 > 0 ? CGFloat($0) : nil } ?? 0
+
+        styledText(text, lineHeightMultiple: headingLineHeight)
+            .font(resolver.resolveFont(type: "heading", variant: variant, group: "text", size: headingSize, weight: headingWeight))
+            .fontWeight(headingWeight)
+            .tracking(headingTracking)
             .foregroundColor(resolver.resolveColor(type: "heading", variant: variant, group: "text", property: "color", fallback: .primary))
             .accessibilityAddTraits(.isHeader)
     }
@@ -226,11 +231,16 @@ struct JistTextView: View {
         let text = data[name]?.stringValue ?? ""
         let maxLines = resolver.resolveInt(type: "text", variant: node.variant, group: "text", property: "maxLines")
 
-        Text(text)
-            .font(.system(
-                size: resolver.resolveNumber(type: "text", variant: node.variant, group: "text", property: "fontSize", fallback: 14),
-                weight: JistThemeResolver.fontWeight(from: resolver.resolveNumber(type: "text", variant: node.variant, group: "text", property: "fontWeight", fallback: 400))
-            ))
+        let textSize = resolver.resolveNumber(type: "text", variant: node.variant, group: "text", property: "fontSize", fallback: 14)
+        let textWeight = JistThemeResolver.fontWeight(from: resolver.resolveNumber(type: "text", variant: node.variant, group: "text", property: "fontWeight", fallback: 400))
+        let textTracking = resolver.resolveNumber(type: "text", variant: node.variant, group: "text", property: "letterSpacing", fallback: 0)
+        let textLineHeight = resolver.resolve(type: "text", variant: node.variant, group: "text", property: "lineHeight")?.numberValue
+            .flatMap { $0 > 0 ? CGFloat($0) : nil } ?? 0
+
+        styledText(text, lineHeightMultiple: textLineHeight)
+            .font(resolver.resolveFont(type: "text", variant: node.variant, group: "text", size: textSize, weight: textWeight))
+            .fontWeight(textWeight)
+            .tracking(textTracking)
             .foregroundColor(resolver.resolveColor(type: "text", variant: node.variant, group: "text", property: "color", fallback: .primary))
             .lineLimit(maxLines)
     }
@@ -245,11 +255,16 @@ struct JistDateView: View {
     let formatDate: ((String, String) -> String)?
 
     var body: some View {
-        Text(displayText)
-            .font(.system(
-                size: resolver.resolveNumber(type: "date", variant: node.variant, group: "text", property: "fontSize", fallback: 12),
-                weight: JistThemeResolver.fontWeight(from: resolver.resolveNumber(type: "date", variant: node.variant, group: "text", property: "fontWeight", fallback: 400))
-            ))
+        let dateSize = resolver.resolveNumber(type: "date", variant: node.variant, group: "text", property: "fontSize", fallback: 12)
+        let dateWeight = JistThemeResolver.fontWeight(from: resolver.resolveNumber(type: "date", variant: node.variant, group: "text", property: "fontWeight", fallback: 400))
+        let dateTracking = resolver.resolveNumber(type: "date", variant: node.variant, group: "text", property: "letterSpacing", fallback: 0)
+        let dateLineHeight = resolver.resolve(type: "date", variant: node.variant, group: "text", property: "lineHeight")?.numberValue
+            .flatMap { $0 > 0 ? CGFloat($0) : nil } ?? 0
+
+        styledText(displayText, lineHeightMultiple: dateLineHeight)
+            .font(resolver.resolveFont(type: "date", variant: node.variant, group: "text", size: dateSize, weight: dateWeight))
+            .fontWeight(dateWeight)
+            .tracking(dateTracking)
             .foregroundColor(resolver.resolveColor(type: "date", variant: node.variant, group: "text", property: "color", fallback: .secondary))
     }
 
@@ -283,11 +298,16 @@ struct JistButtonView: View {
                     meta: node.meta
                 ))
             } label: {
-                Text(label)
-                    .font(.system(
-                        size: resolver.resolveNumber(type: "button", variant: node.variant, group: "text", property: "fontSize", fallback: 14),
-                        weight: JistThemeResolver.fontWeight(from: resolver.resolveNumber(type: "button", variant: node.variant, group: "text", property: "fontWeight", fallback: 500))
-                    ))
+                let buttonSize = resolver.resolveNumber(type: "button", variant: node.variant, group: "text", property: "fontSize", fallback: 14)
+                let buttonWeight = JistThemeResolver.fontWeight(from: resolver.resolveNumber(type: "button", variant: node.variant, group: "text", property: "fontWeight", fallback: 500))
+                let buttonTracking = resolver.resolveNumber(type: "button", variant: node.variant, group: "text", property: "letterSpacing", fallback: 0)
+                let buttonLineHeight = resolver.resolve(type: "button", variant: node.variant, group: "text", property: "lineHeight")?.numberValue
+                    .flatMap { $0 > 0 ? CGFloat($0) : nil } ?? 0
+
+                styledText(label, lineHeightMultiple: buttonLineHeight)
+                    .font(resolver.resolveFont(type: "button", variant: node.variant, group: "text", size: buttonSize, weight: buttonWeight))
+                    .fontWeight(buttonWeight)
+                    .tracking(buttonTracking)
                     .foregroundColor(resolver.resolveColor(type: "button", variant: node.variant, group: "text", property: "color", fallback: .white))
             }
             .buttonStyle(JistButtonStyle(resolver: resolver, variant: node.variant))
@@ -474,4 +494,18 @@ struct MarginModifier: ViewModifier {
             trailing: margin?.right ?? 0
         ))
     }
+}
+
+// MARK: - Line Height Helper
+
+/// Applies lineHeightMultiple via NSParagraphStyle so the multiplier is relative
+/// to the font's natural line metrics — consistent with how iOS text layout works.
+/// Falls back to plain Text when lineHeight is 0 (reset/unset).
+private func styledText(_ string: String, lineHeightMultiple: CGFloat) -> Text {
+    guard lineHeightMultiple > 0 else { return Text(string) }
+    var attributed = AttributedString(string)
+    let paragraphStyle = NSMutableParagraphStyle()
+    paragraphStyle.lineHeightMultiple = lineHeightMultiple
+    attributed.paragraphStyle = paragraphStyle
+    return Text(attributed)
 }

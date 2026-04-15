@@ -14,17 +14,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -32,6 +36,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.floatOrNull
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -43,14 +48,114 @@ private const val MAX_TEMPLATE_DEPTH = 10
 
 private val LocalJistTextAlign = compositionLocalOf { TextAlign.Start }
 
-private fun tightTextStyle(fontSize: TextUnit, fontWeight: FontWeight, color: Color) = TextStyle(
+// Font stack resolution: keyed by raw fontFamily string from theme, value is the resolved FontFamily or null.
+internal val LocalJistFontCache = compositionLocalOf<Map<String, FontFamily>> { emptyMap() }
+
+/**
+ * Walks the theme JSON collecting all fontFamily values, then resolves each CSS-style
+ * font stack (e.g. "Roboto, sans-serif") against fonts available in the app.
+ *
+ * For each family name, probes res/font/ for weight-specific variants using the naming
+ * convention `familyname_weight` (e.g. `roboto_bold`, `roboto_light`). Any variants
+ * found are combined into a single multi-weight FontFamily so Compose can select the
+ * correct file automatically when fontWeight changes.
+ *
+ * Also covers XML downloadable font declarations in res/font/, since
+ * ResourcesCompat.getFont() resolves those transparently.
+ */
+internal fun buildFontCache(context: android.content.Context, theme: JsonObject): Map<String, FontFamily> {
+    val cache = mutableMapOf<String, FontFamily>()
+
+    fun collectFontFamilies(element: JsonElement) {
+        when (element) {
+            is JsonObject -> element.forEach { (key, value) ->
+                if (key == "fontFamily") {
+                    (value as? JsonPrimitive)?.contentOrNull
+                        ?.takeIf { it.isNotEmpty() }
+                        ?.let { stack ->
+                            if (stack !in cache) {
+                                resolveStack(context, stack)?.let { cache[stack] = it }
+                            }
+                        }
+                } else {
+                    collectFontFamilies(value)
+                }
+            }
+            else -> {}
+        }
+    }
+
+    collectFontFamilies(theme)
+    return cache
+}
+
+// Maps each FontWeight to the resource name suffixes to probe, in preference order.
+// Multiple suffixes per weight handle common naming variations (semibold vs semi_bold, etc.).
+private val WEIGHT_SUFFIXES: List<Pair<FontWeight, List<String>>> = listOf(
+    FontWeight.Thin       to listOf("thin"),
+    FontWeight.ExtraLight to listOf("extralight", "extra_light"),
+    FontWeight.Light      to listOf("light"),
+    FontWeight.Normal     to listOf("regular", "normal", ""),   // "" = bare family name (e.g. roboto.ttf)
+    FontWeight.Medium     to listOf("medium"),
+    FontWeight.SemiBold   to listOf("semibold", "semi_bold"),
+    FontWeight.Bold       to listOf("bold"),
+    FontWeight.ExtraBold  to listOf("extrabold", "extra_bold"),
+    FontWeight.Black      to listOf("black"),
+)
+
+/**
+ * Resolves a CSS-style font stack (e.g. "Roboto, sans-serif") to a Compose FontFamily.
+ *
+ * For each name in the stack, probes res/font/ for weight variants using the convention
+ * `familyname_weight` (e.g. `roboto_bold`). All variants found are added to the FontFamily
+ * so Compose can automatically select the right file when fontWeight changes. Single-weight
+ * fonts (e.g. `abril_fatface.ttf` with no weight suffix) are found via the Normal/regular
+ * probe and produce a FontFamily with one entry — Compose will apply synthetic weight to it.
+ *
+ * Returns null if no resources resolve for any name in the stack.
+ */
+private fun resolveStack(context: android.content.Context, stack: String): FontFamily? {
+    val names = stack.split(",").map { it.trim() }
+    for (name in names) {
+        val baseName = name.lowercase().replace(" ", "_")
+        val fonts = mutableListOf<Font>()
+
+        for ((weight, suffixes) in WEIGHT_SUFFIXES) {
+            for (suffix in suffixes) {
+                val resourceName = if (suffix.isEmpty()) baseName else "${baseName}_${suffix}"
+                val resId = context.resources.getIdentifier(resourceName, "font", context.packageName)
+                android.util.Log.d("JistFonts", "probe pkg=${context.packageName} res=$resourceName -> resId=$resId")
+                if (resId != 0) {
+                    fonts += Font(resId, weight)
+                    break   // found a file for this weight, move to the next weight
+                }
+            }
+        }
+
+        android.util.Log.d("JistFonts", "resolveStack '$name' -> ${fonts.size} weights found")
+        if (fonts.isNotEmpty()) return FontFamily(fonts)
+    }
+    return null
+}
+
+private fun tightTextStyle(
+    fontSize: TextUnit,
+    fontWeight: FontWeight,
+    color: Color,
+    fontFamily: FontFamily? = null,
+    letterSpacing: TextUnit = TextUnit.Unspecified,
+    lineHeight: TextUnit = TextUnit.Unspecified
+) = TextStyle(
     fontSize = fontSize,
     fontWeight = fontWeight,
     color = color,
+    fontFamily = fontFamily,
+    letterSpacing = letterSpacing,
+    lineHeight = lineHeight,
     platformStyle = PlatformTextStyle(includeFontPadding = false),
     lineHeightStyle = LineHeightStyle(
         alignment = LineHeightStyle.Alignment.Proportional,
-        trim = LineHeightStyle.Trim.Both
+        trim = LineHeightStyle.Trim.None
     )
 )
 
@@ -250,7 +355,12 @@ private fun JistHeadingView(
             fontWeight = JistThemeResolver.fontWeight(
                 resolver.resolveFloat("heading", variant, "text", "fontWeight", fallback = 600f)
             ),
-            color = resolver.resolveColor("heading", variant, "text", "color", fallback = Color.Black)
+            color = resolver.resolveColor("heading", variant, "text", "color", fallback = Color.Black),
+            fontFamily = LocalJistFontCache.current[resolver.resolve("heading", variant, "text", "fontFamily")?.contentOrNull ?: ""],
+            letterSpacing = resolver.resolve("heading", variant, "text", "letterSpacing")?.floatOrNull
+                ?.takeIf { it != 0f }?.sp ?: TextUnit.Unspecified,
+            lineHeight = resolver.resolve("heading", variant, "text", "lineHeight")?.floatOrNull
+                ?.takeIf { it > 0f }?.let { TextUnit(it, TextUnitType.Em) } ?: TextUnit.Unspecified
         ),
         modifier = modifier.semantics { heading() }
     )
@@ -283,7 +393,15 @@ private fun JistTextView(
             fontWeight = JistThemeResolver.fontWeight(
                 resolver.resolveFloat("text", node.variant, "text", "fontWeight", fallback = 400f)
             ),
-            color = resolver.resolveColor("text", node.variant, "text", "color", fallback = Color.DarkGray)
+            color = resolver.resolveColor("text", node.variant, "text", "color", fallback = Color.DarkGray),
+            fontFamily = LocalJistFontCache.current[resolver.resolve("text", node.variant, "text", "fontFamily")?.contentOrNull ?: ""].also {
+                val key = resolver.resolve("text", node.variant, "text", "fontFamily")?.contentOrNull
+                android.util.Log.d("JistFonts", "text fontFamily key='$key' resolved=${it != null} cacheSize=${LocalJistFontCache.current.size}")
+            },
+            letterSpacing = resolver.resolve("text", node.variant, "text", "letterSpacing")?.floatOrNull
+                ?.takeIf { it != 0f }?.sp ?: TextUnit.Unspecified,
+            lineHeight = resolver.resolve("text", node.variant, "text", "lineHeight")?.floatOrNull
+                ?.takeIf { it > 0f }?.let { TextUnit(it, TextUnitType.Em) } ?: TextUnit.Unspecified
         ),
         maxLines = maxLines ?: Int.MAX_VALUE,
         overflow = TextOverflow.Ellipsis,
@@ -318,7 +436,12 @@ private fun JistDateView(
             fontWeight = JistThemeResolver.fontWeight(
                 resolver.resolveFloat("date", node.variant, "text", "fontWeight", fallback = 400f)
             ),
-            color = resolver.resolveColor("date", node.variant, "text", "color", fallback = Color.Gray)
+            color = resolver.resolveColor("date", node.variant, "text", "color", fallback = Color.Gray),
+            fontFamily = LocalJistFontCache.current[resolver.resolve("date", node.variant, "text", "fontFamily")?.contentOrNull ?: ""],
+            letterSpacing = resolver.resolve("date", node.variant, "text", "letterSpacing")?.floatOrNull
+                ?.takeIf { it != 0f }?.sp ?: TextUnit.Unspecified,
+            lineHeight = resolver.resolve("date", node.variant, "text", "lineHeight")?.floatOrNull
+                ?.takeIf { it > 0f }?.let { TextUnit(it, TextUnitType.Em) } ?: TextUnit.Unspecified
         ),
         modifier = modifier
     )
@@ -388,7 +511,12 @@ private fun JistButtonView(
                 fontWeight = JistThemeResolver.fontWeight(
                     resolver.resolveFloat("button", node.variant, "text", "fontWeight", fallback = 500f)
                 ),
-                color = textColor
+                color = textColor,
+                fontFamily = LocalJistFontCache.current[resolver.resolve("button", node.variant, "text", "fontFamily")?.contentOrNull ?: ""],
+                letterSpacing = resolver.resolve("button", node.variant, "text", "letterSpacing")?.floatOrNull
+                    ?.takeIf { it != 0f }?.sp ?: TextUnit.Unspecified,
+                lineHeight = resolver.resolve("button", node.variant, "text", "lineHeight")?.floatOrNull
+                    ?.takeIf { it > 0f }?.let { TextUnit(it, TextUnitType.Em) } ?: TextUnit.Unspecified
             )
         )
     }

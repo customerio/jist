@@ -2,8 +2,10 @@ package io.customer.jist
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
@@ -34,6 +36,9 @@ fun JistView(
     modifier: Modifier = Modifier
 ) {
     // Resolve: pick the template matching this renderer's supported version
+    val context = LocalContext.current
+    val fontCache = remember(theme) { buildFontCache(context, theme) }
+
     val resolved = remember(templates) {
         templates.mapNotNull { (key, versions) ->
             versions.firstOrNull { it.version == SUPPORTED_VERSION }?.let { key to it }
@@ -50,13 +55,15 @@ fun JistView(
 
     val resolver = remember(theme, isDark) { JistThemeResolver(theme, isDark) }
 
-    JistNodeView(
-        node = template.root,
-        data = data,
-        resolver = resolver,
-        formatDate = formatDate,
-        onAction = onAction,
-        modifier = modifier,
-        templates = resolved
-    )
+    CompositionLocalProvider(LocalJistFontCache provides fontCache) {
+        JistNodeView(
+            node = template.root,
+            data = data,
+            resolver = resolver,
+            formatDate = formatDate,
+            onAction = onAction,
+            modifier = modifier,
+            templates = resolved
+        )
+    }
 }

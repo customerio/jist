@@ -1,19 +1,25 @@
 {
   "$schema": "../spec/jist-theme-schema.json",
   "heading": {
-    "text": { "fontSize": 15, "fontWeight": 600, "color": "#1A1A2E" },
+    "text": { "fontSize": 22, "fontWeight": 400, "color": "#1A1A2E", "fontFamily": "Abril Fatface", "letterSpacing": 1.2, "lineHeight": 1.2 },
+    "h2": {
+      "text": { "fontSize": 18 }
+    },
+    "h3": {
+      "text": { "fontSize": 15 }
+    },
     "h4": {
-      "text": { "fontSize": 14, "fontWeight": 600 }
+      "text": { "fontSize": 14, "fontWeight": 600, "fontFamily": "DM Sans", "letterSpacing": 0}
     }
   },
   "text": {
-    "text": { "fontSize": 13, "color": "#4A4A68", "maxLines": 3 }
+    "text": { "fontSize": 13, "color": "#4A4A68", "fontWeight": 400, "maxLines": 3, "fontFamily": "DM Sans", "lineHeight": 1.4, "letterSpacing": 0 }
   },
   "date": {
-    "text": { "fontSize": 12, "color": "#8E8EA0" }
+    "text": { "fontSize": 13, "color": "#8E8EA0", "fontWeight": 400, "lineHeight": 1.2, "fontFamily": "DM Sans" }
   },
   "button": {
-    "text": { "color": "#FFFFFF", "fontSize": 13, "fontWeight": 500 },
+    "text": { "color": "#FFFFFF", "fontSize": 13, "fontWeight": 500, "fontFamily": "DM Sans" },
     "background": { "color": "#4F46E5" },
     "border": { "radius": 6 },
     "padding": { "top": 7, "right": 14, "bottom": 7, "left": 14 },
