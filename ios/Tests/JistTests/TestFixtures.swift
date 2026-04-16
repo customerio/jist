@@ -6,7 +6,7 @@ enum TestFixtures {
 
     /// Path to the shared fixtures directory, resolved relative to this source file.
     private static let sharedDir: URL = {
-        URL(fileURLWithPath: #file)
+        URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent() // JistTests
             .deletingLastPathComponent() // Tests
             .deletingLastPathComponent() // ios

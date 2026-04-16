@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
@@ -42,31 +41,41 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.staticCompositionLocalOf
 import java.time.format.FormatStyle
 
 private const val MAX_TEMPLATE_DEPTH = 10
 
 private val LocalJistTextAlign = compositionLocalOf { TextAlign.Start }
 
-// Font stack resolution: keyed by raw fontFamily string from theme, value is the resolved FontFamily or null.
-internal val LocalJistFontCache = compositionLocalOf<Map<String, FontFamily>> { emptyMap() }
+// Keyed by raw fontFamily string from the theme; value is the resolved FontFamily.
+// staticCompositionLocalOf is used because this map only changes when the theme or JistTheme
+// fonts change — recomposition is never needed at the individual node level.
+internal val LocalJistFontCache = staticCompositionLocalOf<Map<String, FontFamily>> { emptyMap() }
 
 /**
- * Walks the theme JSON collecting all fontFamily values, then resolves each CSS-style
- * font stack (e.g. "Roboto, sans-serif") against fonts available in the app.
+ * Walks the theme JSON collecting all fontFamily CSS stacks, then resolves each stack against
+ * [fonts] with case-insensitive name matching. Returns a map keyed by raw stack string so
+ * [LocalJistFontCache] lookups remain O(1) at render time.
  *
- * For each family name, probes res/font/ for weight-specific variants using the naming
- * convention `familyname_weight` (e.g. `roboto_bold`, `roboto_light`). Any variants
- * found are combined into a single multi-weight FontFamily so Compose can select the
- * correct file automatically when fontWeight changes.
- *
- * Also covers XML downloadable font declarations in res/font/, since
- * ResourcesCompat.getFont() resolves those transparently.
+ * Resolution order within a stack mirrors CSS font-family: names are tried left to right;
+ * the first name that matches a key in [fonts] wins.
  */
-internal fun buildFontCache(context: android.content.Context, theme: JsonObject): Map<String, FontFamily> {
+internal fun buildFontCache(theme: JsonObject, fonts: Map<String, FontFamily>): Map<String, FontFamily> {
+    if (fonts.isEmpty()) return emptyMap()
+    // Normalise keys once: lowercase, collapse whitespace.
+    val normalized = fonts.entries.associate { (k, v) -> k.trim().lowercase() to v }
+
     val cache = mutableMapOf<String, FontFamily>()
 
-    fun collectFontFamilies(element: JsonElement) {
+    fun resolve(stack: String): FontFamily? {
+        for (name in stack.split(",")) {
+            normalized[name.trim().lowercase()]?.let { return it }
+        }
+        return null
+    }
+
+    fun collect(element: JsonElement) {
         when (element) {
             is JsonObject -> element.forEach { (key, value) ->
                 if (key == "fontFamily") {
@@ -74,68 +83,19 @@ internal fun buildFontCache(context: android.content.Context, theme: JsonObject)
                         ?.takeIf { it.isNotEmpty() }
                         ?.let { stack ->
                             if (stack !in cache) {
-                                resolveStack(context, stack)?.let { cache[stack] = it }
+                                resolve(stack)?.let { cache[stack] = it }
                             }
                         }
                 } else {
-                    collectFontFamilies(value)
+                    collect(value)
                 }
             }
             else -> {}
         }
     }
 
-    collectFontFamilies(theme)
+    collect(theme)
     return cache
-}
-
-// Maps each FontWeight to the resource name suffixes to probe, in preference order.
-// Multiple suffixes per weight handle common naming variations (semibold vs semi_bold, etc.).
-private val WEIGHT_SUFFIXES: List<Pair<FontWeight, List<String>>> = listOf(
-    FontWeight.Thin       to listOf("thin"),
-    FontWeight.ExtraLight to listOf("extralight", "extra_light"),
-    FontWeight.Light      to listOf("light"),
-    FontWeight.Normal     to listOf("regular", "normal", ""),   // "" = bare family name (e.g. roboto.ttf)
-    FontWeight.Medium     to listOf("medium"),
-    FontWeight.SemiBold   to listOf("semibold", "semi_bold"),
-    FontWeight.Bold       to listOf("bold"),
-    FontWeight.ExtraBold  to listOf("extrabold", "extra_bold"),
-    FontWeight.Black      to listOf("black"),
-)
-
-/**
- * Resolves a CSS-style font stack (e.g. "Roboto, sans-serif") to a Compose FontFamily.
- *
- * For each name in the stack, probes res/font/ for weight variants using the convention
- * `familyname_weight` (e.g. `roboto_bold`). All variants found are added to the FontFamily
- * so Compose can automatically select the right file when fontWeight changes. Single-weight
- * fonts (e.g. `abril_fatface.ttf` with no weight suffix) are found via the Normal/regular
- * probe and produce a FontFamily with one entry — Compose will apply synthetic weight to it.
- *
- * Returns null if no resources resolve for any name in the stack.
- */
-private fun resolveStack(context: android.content.Context, stack: String): FontFamily? {
-    val names = stack.split(",").map { it.trim() }
-    for (name in names) {
-        val baseName = name.lowercase().replace(" ", "_")
-        val fonts = mutableListOf<Font>()
-
-        for ((weight, suffixes) in WEIGHT_SUFFIXES) {
-            for (suffix in suffixes) {
-                val resourceName = if (suffix.isEmpty()) baseName else "${baseName}_${suffix}"
-                val resId = context.resources.getIdentifier(resourceName, "font", context.packageName)
-                android.util.Log.d("JistFonts", "probe pkg=${context.packageName} res=$resourceName -> resId=$resId")
-                if (resId != 0) {
-                    fonts += Font(resId, weight)
-                    break   // found a file for this weight, move to the next weight
-                }
-            }
-        }
-
-        android.util.Log.d("JistFonts", "resolveStack '$name' -> ${fonts.size} weights found")
-        if (fonts.isNotEmpty()) return FontFamily(fonts)
-    }
-    return null
 }
 
 private fun tightTextStyle(
@@ -394,10 +354,7 @@ private fun JistTextView(
                 resolver.resolveFloat("text", node.variant, "text", "fontWeight", fallback = 400f)
             ),
             color = resolver.resolveColor("text", node.variant, "text", "color", fallback = Color.DarkGray),
-            fontFamily = LocalJistFontCache.current[resolver.resolve("text", node.variant, "text", "fontFamily")?.contentOrNull ?: ""].also {
-                val key = resolver.resolve("text", node.variant, "text", "fontFamily")?.contentOrNull
-                android.util.Log.d("JistFonts", "text fontFamily key='$key' resolved=${it != null} cacheSize=${LocalJistFontCache.current.size}")
-            },
+            fontFamily = LocalJistFontCache.current[resolver.resolve("text", node.variant, "text", "fontFamily")?.contentOrNull ?: ""],
             letterSpacing = resolver.resolve("text", node.variant, "text", "letterSpacing")?.floatOrNull
                 ?.takeIf { it != 0f }?.sp ?: TextUnit.Unspecified,
             lineHeight = resolver.resolve("text", node.variant, "text", "lineHeight")?.floatOrNull

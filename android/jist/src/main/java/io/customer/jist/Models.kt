@@ -117,7 +117,7 @@ enum class JistMode { Auto, Light, Dark }
 
 // MARK: - Serializer
 
-internal val JistJson = Json { ignoreUnknownKeys = true }
+val JistJson = Json { ignoreUnknownKeys = true }
 
 internal object JistNodeSerializer : KSerializer<JistNode> {
     override val descriptor: SerialDescriptor = JsonElement.serializer().descriptor

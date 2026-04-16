@@ -1,4 +1,4 @@
-package io.customer.jist
+package io.customer.jist.example
 
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
@@ -15,12 +15,20 @@ import coil3.ImageLoader
 import coil3.asImage
 import coil3.test.FakeImageLoaderEngine
 import com.android.ide.common.rendering.api.SessionParams
+import io.customer.jist.JistJson
+import io.customer.jist.JistMode
+import io.customer.jist.JistTemplate
+import io.customer.jist.JistTheme
+import io.customer.jist.JistView
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 
 class SnapshotTests {
 
@@ -53,6 +61,28 @@ class SnapshotTests {
     private fun loadResource(name: String): String =
         javaClass.classLoader!!.getResourceAsStream(name)!!.bufferedReader().readText()
 
+    // Paparazzi's layoutlib cannot load ResourceFont (Font(resId)) — only AndroidAssetFont
+    // (Font(path, assetManager, weight)) works. We build the FontFamily map here using assets/fonts/,
+    // which mirrors the res/font/ files copied alongside them.
+    private val fonts: Map<String, FontFamily> by lazy {
+        val assets = paparazzi.context.assets
+        fun assetFont(path: String, weight: FontWeight): Font? =
+            runCatching { assets.open(path).close(); Font(path, assets, weight) }.getOrNull()
+
+        buildMap {
+            listOfNotNull(
+                assetFont("fonts/abril_fatface.ttf", FontWeight.Normal)
+            ).takeIf { it.isNotEmpty() }?.let { put("Abril Fatface", FontFamily(it)) }
+
+            listOfNotNull(
+                assetFont("fonts/dm_sans_regular.ttf", FontWeight.Normal),
+                assetFont("fonts/dm_sans_medium.ttf", FontWeight.Medium),
+                assetFont("fonts/dm_sans_semibold.ttf", FontWeight.SemiBold),
+                assetFont("fonts/dm_sans_bold.ttf", FontWeight.Bold),
+            ).takeIf { it.isNotEmpty() }?.let { put("DM Sans", FontFamily(it)) }
+        }
+    }
+
     private val allTemplates: Map<String, List<JistTemplate>> by lazy {
         val obj = JistJson.parseToJsonElement(loadResource("templates.json")).jsonObject
         listOf("basic", "image", "cta", "action", "hero", "inbox", "profile", "announcement").associateWith { key ->
@@ -71,15 +101,17 @@ class SnapshotTests {
     private fun snapshot(templateKey: String, mode: JistMode) {
         val bg = if (mode == JistMode.Light) Color.White else Color.Black
         paparazzi.snapshot {
-            Box(modifier = Modifier.background(bg).padding(16.dp)) {
-                JistView(
-                    name = templateKey,
-                    templates = allTemplates,
-                    data = allData[templateKey]!!.jsonObject,
-                    theme = theme,
-                    mode = mode,
-                    formatDate = { _, _ -> "Apr 1, 2026" }
-                )
+            JistTheme(fonts = fonts) {
+                Box(modifier = Modifier.background(bg).padding(16.dp)) {
+                    JistView(
+                        name = templateKey,
+                        templates = allTemplates,
+                        data = allData[templateKey]!!.jsonObject,
+                        theme = theme,
+                        mode = mode,
+                        formatDate = { _, _ -> "Apr 1, 2026" }
+                    )
+                }
             }
         }
     }
@@ -124,3 +156,4 @@ class SnapshotTests {
     @Test fun announcement_light() = snapshot("announcement", JistMode.Light)
     @Test fun announcement_dark() = snapshot("announcement", JistMode.Dark)
 }
+

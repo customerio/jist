@@ -80,50 +80,98 @@ Use the PostScript name (found in the font file's name table, e.g. `"AbrilFatfac
 
 **How resolution works:**
 
-For each name in the stack, Jist normalises it to a resource name (`"Roboto"` → `"roboto"`, `"Open Sans"` → `"open_sans"`) and probes `res/font/` for each standard weight suffix in order:
+On Android, fonts are registered once via `JistTheme` — a composable that provides a `Map<String, FontFamily>` to all `JistView` calls within its subtree. Jist resolves each `fontFamily` CSS stack from the theme against this map using case-insensitive name matching (left to right through the stack). The result is cached per unique stack string per theme load.
 
-| FontWeight | Suffixes probed |
-|---|---|
-| Thin (100) | `_thin` |
-| ExtraLight (200) | `_extralight`, `_extra_light` |
-| Light (300) | `_light` |
-| Normal (400) | `_regular`, `_normal`, *(no suffix)* |
-| Medium (500) | `_medium` |
-| SemiBold (600) | `_semibold`, `_semi_bold` |
-| Bold (700) | `_bold` |
-| ExtraBold (800) | `_extrabold`, `_extra_bold` |
-| Black (900) | `_black` |
+```kotlin
+val dmSans = FontFamily(
+    Font(R.font.dm_sans_regular, FontWeight.Normal),
+    Font(R.font.dm_sans_medium, FontWeight.Medium),
+    Font(R.font.dm_sans_semibold, FontWeight.SemiBold),
+    Font(R.font.dm_sans_bold, FontWeight.Bold),
+)
+val abrilFatface = FontFamily(Font(R.font.abril_fatface, FontWeight.Normal))
 
-Every variant found is added to a Compose `FontFamily` as `Font(resId, weight)`. Compose then selects the correct file automatically when `fontWeight` changes — no extra code needed at the call site.
+JistTheme(fonts = mapOf("DM Sans" to dmSans, "Abril Fatface" to abrilFatface)) {
+    // All JistView calls here automatically use the fonts above.
+    JistView(name = "inbox", templates = templates, data = data, theme = theme)
+}
+```
+
+Map keys are the **font family name** as it appears in the theme (e.g. `"DM Sans"`, `"Abril Fatface"`). Matching is case-insensitive. Omitting `JistTheme` — or not including a name — causes the corresponding text to render in the system font.
 
 **Bundling fonts:**
 
-Place font files in `res/font/` following the `familyname_weight.ttf` naming convention:
+Place font files in `res/font/` of your app module following the `familyname_weight.ttf` naming convention:
 
 ```
 res/font/
-  roboto_light.ttf
-  roboto_regular.ttf
-  roboto_medium.ttf
-  roboto_bold.ttf
-  roboto_black.ttf
+  dm_sans_regular.ttf
+  dm_sans_medium.ttf
+  dm_sans_semibold.ttf
+  dm_sans_bold.ttf
+  abril_fatface.ttf
 ```
 
 Gradle picks up all files in `res/font/` automatically — no manifest or build config changes needed.
 
 **Downloadable fonts:**
 
-XML downloadable font declarations in `res/font/` (added via Android Studio's font picker) are resolved transparently by the same lookup — `getIdentifier` finds the XML resource and Compose handles the provider fetch. The same naming convention applies:
+XML downloadable font declarations work the same way — reference them via `R.font.*` like any other resource:
 
 ```
 res/font/
-  roboto_regular.xml   ← points to Google Fonts provider
-  roboto_bold.xml
+  dm_sans_regular.xml   ← points to Google Fonts provider
+  dm_sans_bold.xml
+```
+
+```kotlin
+val dmSans = FontFamily(
+    Font(R.font.dm_sans_regular, FontWeight.Normal),
+    Font(R.font.dm_sans_bold, FontWeight.Bold),
+)
 ```
 
 **Single-weight fonts:**
 
-Place the file as `familyname.ttf` (no weight suffix, e.g. `abril_fatface.ttf`). It is found by the Normal/400 probe (the bare name fallback). `fontWeight` will be passed but Compose will apply synthetic weight since only one variant is registered.
+Supply a single-entry `FontFamily`. Compose will apply synthetic weight when `fontWeight` doesn't match:
+
+```kotlin
+val abrilFatface = FontFamily(Font(R.font.abril_fatface, FontWeight.Normal))
+```
+
+**Snapshot tests (Paparazzi):**
+
+Paparazzi's layoutlib cannot load `ResourceFont` (`Font(resId)`). For snapshot tests, use `Font(path, assetManager, weight)` (AndroidAssetFont) instead, loading from `src/main/assets/fonts/`. Build the map explicitly and pass it to `JistTheme`:
+
+```kotlin
+private val fonts: Map<String, FontFamily> by lazy {
+    val assets = paparazzi.context.assets
+    fun assetFont(path: String, weight: FontWeight): Font? =
+        runCatching { assets.open(path).close(); Font(path, assets, weight) }.getOrNull()
+
+    buildMap {
+        listOfNotNull(
+            assetFont("fonts/dm_sans_regular.ttf", FontWeight.Normal),
+            assetFont("fonts/dm_sans_medium.ttf", FontWeight.Medium),
+            assetFont("fonts/dm_sans_semibold.ttf", FontWeight.SemiBold),
+            assetFont("fonts/dm_sans_bold.ttf", FontWeight.Bold),
+        ).takeIf { it.isNotEmpty() }?.let { put("DM Sans", FontFamily(it)) }
+
+        listOfNotNull(
+            assetFont("fonts/abril_fatface.ttf", FontWeight.Normal)
+        ).takeIf { it.isNotEmpty() }?.let { put("Abril Fatface", FontFamily(it)) }
+    }
+}
+
+// In your Paparazzi test:
+paparazzi.snapshot {
+    JistTheme(fonts = fonts) {
+        JistView(name = "inbox", templates = allTemplates, data = data, theme = theme)
+    }
+}
+```
+
+Copy the same `.ttf` files used in `res/font/` into `src/main/assets/fonts/` of the app module. The assets directory is visible to Paparazzi; the resource directory is not.
 
 ---
 
@@ -134,7 +182,7 @@ Place the file as `familyname.ttf` (no weight suffix, e.g. `abril_fatface.ttf`).
 | Family with all weights bundled | Picks closest variant by trait distance | Picks exact weight file; Compose interpolates for missing weights |
 | Family with partial weights (e.g. only Regular + Bold) | Picks closest available | Compose picks nearest available entry |
 | Single-weight font | Uses that PostScript name; synthetic weight applied | One entry at Normal; synthetic weight applied |
-| No font found in stack | `.system(size:weight:)` | Default system font |
+| No font found in stack | `.system(size:weight:)` | System font (`fontFamily` returns `null`) |
 
 ## Example: Roboto (multi-weight)
 
@@ -153,12 +201,19 @@ Roboto-Bold.ttf
 ```
 `UIFont.fontNames(forFamilyName: "Roboto")` returns both. Heading gets `Roboto-Bold`, body text gets `Roboto-Regular`.
 
-Android — place in `res/font/`:
+Android — place in `res/font/` and register via `JistTheme`:
 ```
 roboto_regular.ttf
 roboto_bold.ttf
 ```
-`FontFamily(Font(R.font.roboto_regular, Normal), Font(R.font.roboto_bold, Bold))` is built automatically. Compose routes each text element to the correct file.
+```kotlin
+val roboto = FontFamily(
+    Font(R.font.roboto_regular, FontWeight.Normal),
+    Font(R.font.roboto_bold, FontWeight.Bold),
+)
+JistTheme(fonts = mapOf("Roboto" to roboto)) { ... }
+```
+Compose routes each text element to the correct file based on `fontWeight`.
 
 ## Example: Abril Fatface (single-weight)
 
@@ -177,10 +232,14 @@ AbrilFatface-Regular.ttf
 ```
 The filename can be anything (it's just for registration). iOS uses the family name embedded in the font file, so `UIFont.fontNames(forFamilyName: "Abril Fatface")` returns `["AbrilFatface-Regular"]` regardless of what the `.ttf` file is named on disk.
 
-Android — place in `res/font/`:
+Android — place in `res/font/` and register via `JistTheme`:
 ```
 abril_fatface.ttf
 ```
-The filename must follow the snake_case convention. The Normal probe tries `abril_fatface_regular` (not found), then `abril_fatface_normal` (not found), then `abril_fatface` (found). A single-entry `FontFamily` is built at `FontWeight.Normal`.
+```kotlin
+val abrilFatface = FontFamily(Font(R.font.abril_fatface, FontWeight.Normal))
+JistTheme(fonts = mapOf("Abril Fatface" to abrilFatface)) { ... }
+```
+A single-entry `FontFamily` is built at `FontWeight.Normal`; Compose applies synthetic weight for other weights.
 
-> **Filename conventions differ by platform.** iOS filenames are arbitrary — use whatever name the font vendor ships (e.g. `AbrilFatface-Regular.ttf`). Android filenames must be lowercase snake_case matching the probe pattern (e.g. `abril_fatface.ttf`). The theme value is always the family name on both platforms.
+> **Filename conventions differ by platform.** iOS filenames are arbitrary — use whatever name the font vendor ships (e.g. `AbrilFatface-Regular.ttf`). Android filenames must be lowercase snake_case to match the `R.font.*` resource name convention (e.g. `abril_fatface.ttf`). The theme value is always the family name on both platforms.

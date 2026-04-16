@@ -524,7 +524,7 @@ Colors are hex strings: `"#RRGGBB"` or `"#RRGGBBAA"` for alpha.
 
 #### Font Family
 
-`fontFamily` accepts a **font family name** or a **comma-separated stack** of names evaluated left to right — the first name that resolves to an installed font wins, identical to CSS `font-family`. On web this is passed directly to CSS. On iOS and Android, Jist resolves the name against fonts bundled in the app and automatically selects the correct weight variant file (e.g. `roboto_bold.ttf`) based on the accompanying `fontWeight` value. Falls back to the platform system font if nothing resolves.
+`fontFamily` accepts a **font family name** or a **comma-separated stack** of names evaluated left to right — the first name that resolves to an installed font wins, identical to CSS `font-family`. On web this is passed directly to CSS. On iOS, Jist resolves the name against fonts registered in the app (`UIAppFonts`) and automatically selects the correct weight variant based on `fontWeight` — no code required from the host app. On Android, Jist resolves the stack against the `Map<String, FontFamily>` you register via `JistTheme`.
 
 See [fonts.md](fonts.md) for bundling requirements, weight variant naming conventions, and platform-specific resolution details.
 
@@ -987,10 +987,17 @@ struct ContentView: View {
 **Public API:**
 
 ```kotlin
+import io.customer.jist.JistTheme
 import io.customer.jist.JistView
 
-@Composable
-fun NotificationCard(name: String, templates: Map<String, JistTemplate>, data: Map<String, Any?>) {
+// Define FontFamily values once at the app level.
+val dmSans = FontFamily(
+    Font(R.font.dm_sans_regular, FontWeight.Normal),
+    Font(R.font.dm_sans_bold, FontWeight.Bold),
+)
+
+// Wrap your root composable with JistTheme — all JistView calls inside inherit these fonts.
+JistTheme(fonts = mapOf("DM Sans" to dmSans)) {
     JistView(
         name = name,
         templates = templates,

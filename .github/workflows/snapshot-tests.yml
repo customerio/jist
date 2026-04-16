@@ -100,14 +100,14 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: gradle
 
-      - run: ./gradlew :jist:verifyPaparazziDebug
+      - run: ./gradlew :example:verifyPaparazziDebug
 
       - name: Upload diff artifacts
         if: failure()
         uses: actions/upload-artifact@v5
         with:
           name: android-snapshot-diffs
-          path: android/jist/build/reports/paparazzi/
+          path: android/example/build/reports/paparazzi/
 
   # ── Record mode (workflow dispatch) ──────────────────────────
   record:
@@ -161,7 +161,7 @@ jobs:
 
       - name: Record Android baselines
         working-directory: android
-        run: ./gradlew :jist:recordPaparazziDebug
+        run: ./gradlew :example:recordPaparazziDebug
 
       # ── Open PR ──
       - name: Create PR with updated baselines
@@ -174,7 +174,7 @@ jobs:
           git add \
             web/tests/__snapshots__ \
             ios/Tests/JistTests/__Snapshots__ \
-            android/jist/src/test/snapshots
+            android/example/src/test/snapshots
           if git diff --cached --quiet; then
             echo "No snapshot changes detected"
             exit 0

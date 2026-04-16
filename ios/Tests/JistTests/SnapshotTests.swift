@@ -9,6 +9,7 @@ import AppKit
 import UIKit
 #endif
 
+@MainActor
 final class JistSnapshotTests: XCTestCase {
 
     private var templates: [String: [JistTemplate]]!
