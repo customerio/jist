@@ -35,6 +35,17 @@ android {
     }
 }
 
+val copySharedResources by tasks.registering(Copy::class) {
+    from("../../shared") {
+        include("*.json")
+    }
+    into("src/main/res/raw")
+}
+
+tasks.named("preBuild") {
+    dependsOn(copySharedResources)
+}
+
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation(project(":jist"))
