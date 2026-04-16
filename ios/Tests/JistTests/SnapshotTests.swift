@@ -1,5 +1,6 @@
 import XCTest
 import SwiftUI
+import CoreText
 import Jist
 import SnapshotTesting
 
@@ -21,11 +22,23 @@ final class JistSnapshotTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
+        Self.registerFonts()
         templates = TestFixtures.loadTemplates()
         dataMap = TestFixtures.loadData()
         theme = TestFixtures.loadTheme()
         // Uncomment to record new reference snapshots, then set back to false.
         // isRecording = true
+    }
+
+    /// Registers all bundled font files with Core Text so UIFont/NSFont can resolve them
+    /// by family name — the same path used by JistThemeResolver at runtime.
+    /// Safe to call multiple times; CTFontManagerRegisterFontsForURL is idempotent.
+    private static func registerFonts() {
+        let extensions = ["ttf", "otf"]
+        guard let urls = Bundle.module.urls(forResourcesWithExtension: nil, subdirectory: nil) else { return }
+        for url in urls where extensions.contains(url.pathExtension.lowercased()) {
+            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        }
     }
 
     // MARK: - Light Mode
@@ -155,7 +168,7 @@ final class JistSnapshotTests: XCTestCase {
     private func assertTemplateSnapshot(
         _ key: String,
         mode: JistMode,
-        file: StaticString = #file,
+        file: StaticString = #filePath,
         testName: String = #function,
         line: UInt = #line
     ) {

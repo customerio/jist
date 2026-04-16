@@ -15,6 +15,7 @@ targets:
     sources:
       - path: JistExample
       - path: Shared
+      - path: ../../Tests/JistTests/Fonts
     dependencies:
       - package: Jist
       - target: JistLiveActivity

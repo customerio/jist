@@ -22,6 +22,7 @@ let package = Package(
                 .product(name: "SnapshotTesting", package: "swift-snapshot-testing")
             ],
             exclude: ["__Snapshots__"],
+            resources: [.process("Fonts")],
             swiftSettings: [.swiftLanguageMode(.v6)]
         )
     ]
