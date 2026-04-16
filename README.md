@@ -157,18 +157,27 @@ JistView(
 
 ### Android (Jetpack Compose)
 
+Define your fonts once at the app level and wrap your root composable with `JistTheme`. All `JistView` calls inside inherit the fonts automatically:
+
 ```kotlin
+import io.customer.jist.JistTheme
 import io.customer.jist.JistView
 
-JistView(
-    name = "basic",
-    templates = allTemplates,
-    data = data,
-    theme = theme,
-    formatDate = { iso, name -> "2 hours ago" },
-    onAction = { event -> Log.d("Jist", event.toString()) }
+val dmSans = FontFamily(
+    Font(R.font.dm_sans_regular, FontWeight.Normal),
+    Font(R.font.dm_sans_bold, FontWeight.Bold),
 )
-```
+
+JistTheme(fonts = mapOf("DM Sans" to dmSans)) {
+    JistView(
+        name = "basic",
+        templates = allTemplates,
+        data = data,
+        theme = theme,
+        formatDate = { iso, name -> "2 hours ago" },
+        onAction = { event -> Log.d("Jist", event.toString()) }
+    )
+}
 
 ## Components
 
@@ -204,12 +213,17 @@ Dark mode is handled via sparse overrides under `modes.dark` — only the values
 | `formatDate` | `(isoString, name) -> string` | Converts ISO 8601 dates to display text. Optional — falls back to locale-aware formatting. |
 | `onAction` | `(event) -> void` | Receives `{ component, name, data, meta }` when a button or action is activated. |
 
+## Custom fonts
+
+Set `fontFamily` in any theme text group using the human-readable family name or a CSS-style fallback stack. Each platform resolves it natively — see [`spec/fonts.md`](spec/fonts.md) for bundling instructions and weight variant conventions.
+
 ## Project structure
 
 ```
 jist/
 ├── spec/               # Specification and JSON schemas
 │   ├── jist-spec.md
+│   ├── fonts.md
 │   ├── jist-template-schema.json
 │   ├── jist-template-registry-schema.json
 │   └── jist-theme-schema.json
@@ -279,8 +293,8 @@ swift test                                # verify against baselines
 **Android**
 ```bash
 cd android
-./gradlew :jist:verifyPaparazziDebug      # verify against baselines
-./gradlew :jist:recordPaparazziDebug      # re-record baselines
+./gradlew :example:verifyPaparazziDebug      # verify against baselines
+./gradlew :example:recordPaparazziDebug      # re-record baselines
 ```
 
 ### Baseline files
@@ -289,7 +303,7 @@ cd android
 |----------|----------|
 | Web | `web/tests/__snapshots__/*.png` |
 | iOS | `ios/Tests/JistTests/__Snapshots__/SnapshotTests/*.png` |
-| Android | `android/jist/src/test/snapshots/images/*.png` |
+| Android | `android/example/src/test/snapshots/images/*.png` |
 
 These PNGs are committed to the repo. When a renderer change is intentional, re-record and commit the updated baselines.
 
