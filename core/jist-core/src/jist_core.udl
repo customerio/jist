@@ -1,0 +1,14 @@
+// UniFFI interface definition for jist-core.
+//
+// This file declares the surface area exposed to Swift, Kotlin, and other
+// UniFFI consumers. Rust-side implementations live in src/lib.rs.
+//
+// Keep the surface minimal. Every addition is a cross-language contract
+// change — treat it with the same care as a public API.
+
+namespace jist_core {
+    // Returns the version of the jist-core library. Smoke test for the
+    // UniFFI binding pipeline — every host platform should be able to call
+    // this and get a non-empty string back.
+    string jist_version();
+};

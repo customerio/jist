@@ -1,0 +1,41 @@
+[package]
+name = "jist-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Shared non-rendering logic for Jist — models, theme resolution, font resolution, validation."
+
+[lib]
+# cdylib for Android (.so) and direct C FFI consumers.
+# staticlib for iOS (.a → XCFramework).
+# rlib for Rust-side unit tests and (future) other Rust consumers.
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[[bin]]
+# CLI for generating UniFFI bindings (Swift / Kotlin).
+# Usage: cargo run --bin uniffi-bindgen -- generate src/jist_core.udl --language swift --out-dir ../../ios/Sources/Jist/Generated
+name = "uniffi-bindgen"
+path = "uniffi-bindgen.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uniffi = { version = "0.28", features = ["cli"] }
+
+[build-dependencies]
+uniffi = { version = "0.28", features = ["build"] }
+
+[dev-dependencies]
+uniffi = { version = "0.28", features = ["bindgen-tests"] }
+
+# wasm-pack / wasm-bindgen path (web target)
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+
+[package.metadata.wasm-pack.profile.release]
+# wasm-opt bundled with wasm-pack 0.14 is too old for Rust 1.93's bulk-memory
+# output. Disable the bundled optimizer; consumers can run a modern wasm-opt
+# as a post-build step if they want further size reduction.
+wasm-opt = false
