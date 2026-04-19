@@ -1,8 +1,47 @@
 # Jist Core Migration — Shared Rust Core via UniFFI
 
-**Status:** Proposal — awaiting sign-off
-**Branch:** `feat/jist-core-migration` (base for stacked PRs)
+**Status:** In progress — PR 1 landed + PR 2 scaffold landed, awaiting review before porting logic.
+**Branch:** `feat/jist-core-migration`
 **Owner:** TBD
+
+## Progress
+
+| PR | Status | Commit |
+|---|---|---|
+| PR 1 — Tagged schemas + validator | ✅ Landed | `746ee89` |
+| PR 2a — Rust workspace + UniFFI hello world scaffold | ✅ Landed | `cc06339` |
+| PR 2b — Integrate scaffold into iOS/Android/Web renderers | ⏳ Next |
+| PR 3 — Port Models to Rust | ⏳ Pending |
+| PR 4 — Port ThemeResolver to Rust | ⏳ Pending |
+| PR 5 — Port FontResolver to Rust | ⏳ Pending |
+| PR 6 — Template validator to Rust | ⏳ Pending |
+
+### What's been verified locally
+
+Running `core/build-all.sh` end-to-end:
+
+| Target | Result | Artifact size |
+|---|---|---|
+| Host (`aarch64-apple-darwin`) | ✅ `cargo test` passes | n/a |
+| `aarch64-apple-ios` (device) | ✅ Cross-compile | 36 MB unstripped `.a` (shrinks hugely when linked) |
+| `aarch64-apple-ios-sim` | ✅ Cross-compile | 36 MB unstripped `.a` |
+| `arm64-v8a` (Android) | ✅ via cargo-ndk | **315 KB** stripped `.so` |
+| `x86_64` (Android) | ✅ via cargo-ndk | **347 KB** stripped `.so` |
+| `wasm32-unknown-unknown` | ✅ via wasm-pack | **35 KB** `.wasm` + 5 KB JS loader |
+| UniFFI Swift bindings | ✅ Generated | `jistVersion()` exposed as idiomatic Swift |
+| UniFFI Kotlin bindings | ✅ Generated | `jistVersion()` exposed as idiomatic Kotlin |
+| Web TypeScript compile | ✅ Unchanged | No regressions from schema tagging |
+| iOS Swift package build | ✅ Unchanged | No regressions from schema tagging |
+
+These sizes are for the hello-world scaffold only; they'll grow as logic ports land. The `≤500 KB per platform` budget documented below is against final sizes, not today's.
+
+### Not yet verified
+
+- Android Gradle build (schema changes unlikely to break — no platform consumes `spec/*.json` at runtime — but worth confirming)
+- iOS/Android snapshot tests (need to run simulators/emulators; see PR 2b for full end-to-end integration)
+- Builder app (uses AJV with `strict: false`, so `x-jist-tag` is ignored; low risk)
+
+---
 
 ---
 
