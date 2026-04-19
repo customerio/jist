@@ -35,11 +35,16 @@ Running `core/build-all.sh` end-to-end:
 
 These sizes are for the hello-world scaffold only; they'll grow as logic ports land. The `≤500 KB per platform` budget documented below is against final sizes, not today's.
 
+### Also verified after initial scaffold
+
+- **Android `:jist:compileReleaseKotlin`** — compiles unchanged (`./gradlew :jist:compileReleaseKotlin`)
+- **Web Playwright snapshot tests** — **all 16 pass** byte-for-byte (`npx playwright test`): 9 template variants × light/dark modes. Schema tagging caused zero visual regressions.
+
 ### Not yet verified
 
-- Android Gradle build (schema changes unlikely to break — no platform consumes `spec/*.json` at runtime — but worth confirming)
-- iOS/Android snapshot tests (need to run simulators/emulators; see PR 2b for full end-to-end integration)
-- Builder app (uses AJV with `strict: false`, so `x-jist-tag` is ignored; low risk)
+- iOS snapshot tests (swift-snapshot-testing) — need a specific simulator boot flow; low risk since the Swift package build + compilation already succeeds with no model/schema consumption of `x-jist-tag`
+- Android Paparazzi snapshot tests — similar story; unit-level Kotlin compile succeeds
+- Builder app runtime (uses AJV with `strict: false`, so `x-jist-tag` is ignored; low risk)
 
 ---
 

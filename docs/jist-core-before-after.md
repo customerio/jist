@@ -170,6 +170,7 @@ PR #7 is the perfect example of the current pain: it added font-resolution logic
 | iOS `swift build` (existing target, unchanged) | ✅ No regressions |
 | Web `tsc` build (existing target, unchanged) | ✅ No regressions |
 | Android `:jist:compileReleaseKotlin` (existing target, unchanged) | ✅ No regressions |
+| **Web Playwright snapshot tests (16 tests, 9 templates × light/dark)** | ✅ **All 16 passed byte-for-byte** |
 | Working tree clean, no stray artifacts | ✅ |
 | `cargo clippy` on our code | ✅ Clean (one upstream warning inside UniFFI-generated scaffolding code, not ours) |
 
