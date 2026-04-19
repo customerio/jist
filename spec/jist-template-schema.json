@@ -8,10 +8,12 @@
   "properties": {
     "$schema": { "type": "string" },
     "version": {
+      "x-jist-tag": 1,
       "type": "string",
       "description": "Spec version this template targets (e.g. \"1\", \"2\"). The renderer silently skips templates with unsupported versions."
     },
     "root": {
+      "x-jist-tag": 2,
       "$ref": "#/definitions/layoutNode",
       "description": "Root of the template tree. Must be a layout node."
     }
@@ -23,16 +25,16 @@
       "type": "object",
       "description": "Spacing values for margin. All values are unitless numbers (px on web, pt on iOS, dp on Android).",
       "properties": {
-        "top": { "type": "number", "description": "Top spacing" },
-        "right": { "type": "number", "description": "Right spacing" },
-        "bottom": { "type": "number", "description": "Bottom spacing" },
-        "left": { "type": "number", "description": "Left spacing" }
+        "top":    { "x-jist-tag": 1, "type": "number", "description": "Top spacing" },
+        "right":  { "x-jist-tag": 2, "type": "number", "description": "Right spacing" },
+        "bottom": { "x-jist-tag": 3, "type": "number", "description": "Bottom spacing" },
+        "left":   { "x-jist-tag": 4, "type": "number", "description": "Left spacing" }
       },
       "additionalProperties": false
     },
 
     "componentNode": {
-      "description": "Any component node in the template tree. Discriminated by the `type` field.",
+      "description": "Any component node in the template tree. Discriminated by the `type` field. Each variant carries a stable `x-jist-tag` ID (wire-stable across renames).",
       "oneOf": [
         { "$ref": "#/definitions/layoutNode" },
         { "$ref": "#/definitions/actionNode" },
@@ -49,31 +51,38 @@
     "layoutNode": {
       "type": "object",
       "description": "Flex container that arranges children along a single axis. Can be nested to any depth. Layout is structural — it is not themed.",
+      "x-jist-tag": 1,
       "required": ["type", "direction", "children"],
       "properties": {
         "type": { "const": "layout" },
         "direction": {
+          "x-jist-tag": 1,
           "enum": ["vertical", "horizontal"],
           "description": "Main axis direction. 'vertical' = column, 'horizontal' = row."
         },
         "gap": {
+          "x-jist-tag": 2,
           "type": "number",
           "minimum": 0,
           "description": "Space between children (unitless — px/pt/dp)."
         },
         "align": {
+          "x-jist-tag": 3,
           "enum": ["stretch", "start", "end", "center", "baseline"],
           "description": "Cross-axis alignment of children."
         },
         "justify": {
+          "x-jist-tag": 4,
           "enum": ["start", "end", "center", "space-between", "space-around", "space-evenly"],
           "description": "Main-axis distribution of children."
         },
         "margin": {
+          "x-jist-tag": 5,
           "$ref": "#/definitions/spacingObject",
           "description": "Outer spacing around this layout container."
         },
         "children": {
+          "x-jist-tag": 6,
           "type": "array",
           "items": { "$ref": "#/definitions/componentNode" },
           "description": "Ordered child nodes rendered inside this container."
@@ -85,18 +94,22 @@
     "actionNode": {
       "type": "object",
       "description": "Clickable wrapper that makes its children interactive. Fires an onAction event when activated (click/tap, Enter/Space key). Renders even if bound data is absent.",
+      "x-jist-tag": 2,
       "required": ["type", "name", "children"],
       "properties": {
         "type": { "const": "action" },
         "name": {
+          "x-jist-tag": 1,
           "type": "string",
           "description": "Data binding key. `data[name]` provides the action payload (any shape). Also generates a CSS class `jist__<name>` when name differs from 'action'."
         },
         "meta": {
+          "x-jist-tag": 2,
           "type": "object",
           "description": "Static metadata included in the onAction callback. Use for tracking events, routing hints, or other template-level data that doesn't come from the message."
         },
         "children": {
+          "x-jist-tag": 3,
           "type": "array",
           "items": { "$ref": "#/definitions/componentNode" },
           "description": "Child nodes rendered inside the clickable wrapper."
@@ -108,15 +121,18 @@
     "headingNode": {
       "type": "object",
       "description": "Text heading with semantic level. The variant determines both the semantic level (h2/h3/h4) and the style. Renders empty if bound data is absent.",
+      "x-jist-tag": 3,
       "required": ["type"],
       "properties": {
         "type": { "const": "heading" },
         "name": {
+          "x-jist-tag": 1,
           "type": "string",
           "default": "heading",
           "description": "Data binding key. `data[name]` provides the heading text. Defaults to 'heading' when omitted."
         },
         "variant": {
+          "x-jist-tag": 2,
           "enum": ["h2", "h3", "h4"],
           "default": "h3",
           "description": "Semantic level and style variant. Determines the HTML tag on web and the font style from the theme."
@@ -128,15 +144,18 @@
     "textNode": {
       "type": "object",
       "description": "General-purpose text content. Renders empty if bound data is absent.",
+      "x-jist-tag": 4,
       "required": ["type"],
       "properties": {
         "type": { "const": "text" },
         "name": {
+          "x-jist-tag": 1,
           "type": "string",
           "default": "text",
           "description": "Data binding key. `data[name]` provides the text content. Defaults to 'text' when omitted."
         },
         "variant": {
+          "x-jist-tag": 2,
           "type": "string",
           "description": "Style variant name. Maps to a named sub-object in the theme's text config."
         }
@@ -147,15 +166,18 @@
     "dateNode": {
       "type": "object",
       "description": "Formatted timestamp. The display text is produced by the formatDate callback. Renders empty if bound data is absent.",
+      "x-jist-tag": 5,
       "required": ["type"],
       "properties": {
         "type": { "const": "date" },
         "name": {
+          "x-jist-tag": 1,
           "type": "string",
           "default": "date",
           "description": "Data binding key. `data[name]` provides an ISO 8601 date string. Defaults to 'date' when omitted."
         },
         "variant": {
+          "x-jist-tag": 2,
           "type": "string",
           "description": "Style variant name. Maps to a named sub-object in the theme's date config."
         }
@@ -166,19 +188,23 @@
     "buttonNode": {
       "type": "object",
       "description": "Action button that fires an onAction event when clicked. NOT rendered if the bound data field is absent — templates can include optional buttons without conditional logic.",
+      "x-jist-tag": 6,
       "required": ["type", "name"],
       "properties": {
         "type": { "const": "button" },
         "name": {
+          "x-jist-tag": 1,
           "type": "string",
           "description": "Data binding key. `data[name]` must provide `{ label: string, url: string }`. The label becomes the button text."
         },
         "variant": {
+          "x-jist-tag": 2,
           "type": "string",
           "description": "Style variant (e.g., 'primary', 'secondary'). Maps to a named sub-object in the theme's button config.",
           "examples": ["primary", "secondary"]
         },
         "meta": {
+          "x-jist-tag": 3,
           "type": "object",
           "description": "Static metadata included in the onAction callback. Use for tracking events, routing hints, or other template-level data."
         }
@@ -189,18 +215,22 @@
     "imageNode": {
       "type": "object",
       "description": "Image loaded from a URL. NOT rendered if the bound data field is absent. Sizing and scaling are template-level properties because they control how this specific template uses the image.",
+      "x-jist-tag": 7,
       "required": ["type", "name"],
       "properties": {
         "type": { "const": "image" },
         "name": {
+          "x-jist-tag": 1,
           "type": "string",
           "description": "Data binding key. `data[name]` provides the image source URL (string)."
         },
         "variant": {
+          "x-jist-tag": 2,
           "type": "string",
           "description": "Style variant name. Maps to a named sub-object in the theme's image config."
         },
         "width": {
+          "x-jist-tag": 3,
           "oneOf": [
             { "type": "number", "minimum": 0, "description": "Fixed width (unitless — px/pt/dp)." },
             { "const": "fill", "description": "Expand to fill the container width." }
@@ -208,16 +238,19 @@
           "description": "Image width. Use a number for fixed size or 'fill' to expand to container."
         },
         "height": {
+          "x-jist-tag": 4,
           "type": "number",
           "minimum": 0,
           "description": "Image height (unitless — px/pt/dp)."
         },
         "objectFit": {
+          "x-jist-tag": 5,
           "enum": ["contain", "cover", "fill"],
           "default": "contain",
           "description": "How the image fills its box. 'contain' = fit within bounds, 'cover' = fill bounds (clips), 'fill' = stretch to fill."
         },
         "borderRadius": {
+          "x-jist-tag": 6,
           "type": "number",
           "minimum": 0,
           "default": 0,
@@ -230,36 +263,44 @@
     "dynamicLayoutNode": {
       "type": "object",
       "description": "A layout that repeats a single template node for each item in a data array. Combines the layout properties of a regular layout with data-driven iteration.",
+      "x-jist-tag": 8,
       "required": ["type", "name", "template"],
       "properties": {
         "type": { "const": "dynamicLayout" },
         "name": {
+          "x-jist-tag": 1,
           "type": "string",
           "description": "Data binding key. `data[name]` must be an array of objects. Each object becomes the data context for one rendering of the template."
         },
         "direction": {
+          "x-jist-tag": 2,
           "enum": ["vertical", "horizontal"],
           "default": "vertical",
           "description": "Main axis direction for arranging repeated items. Defaults to 'vertical'."
         },
         "gap": {
+          "x-jist-tag": 3,
           "type": "number",
           "minimum": 0,
           "description": "Space between repeated items (unitless — px/pt/dp)."
         },
         "align": {
+          "x-jist-tag": 4,
           "enum": ["stretch", "start", "end", "center", "baseline"],
           "description": "Cross-axis alignment of repeated items."
         },
         "justify": {
+          "x-jist-tag": 5,
           "enum": ["start", "end", "center", "space-between", "space-around", "space-evenly"],
           "description": "Main-axis distribution of repeated items."
         },
         "margin": {
+          "x-jist-tag": 6,
           "$ref": "#/definitions/spacingObject",
           "description": "Outer spacing around the dynamic layout container."
         },
         "template": {
+          "x-jist-tag": 7,
           "$ref": "#/definitions/componentNode",
           "description": "A single node rendered once per item. Data binding within this node resolves against the current array item, not the top-level data. Use a layout node as the template to render multiple elements per item."
         }
@@ -270,10 +311,12 @@
     "templateNode": {
       "type": "object",
       "description": "References a named template from the template registry. The referenced template's root node is rendered in place, using the current data context. Useful for reusing template fragments, especially within dynamicLayout.",
+      "x-jist-tag": 9,
       "required": ["type", "name"],
       "properties": {
         "type": { "const": "template" },
         "name": {
+          "x-jist-tag": 1,
           "type": "string",
           "description": "Name of the template to reference. Must match a key in the templates registry passed to the renderer."
         }

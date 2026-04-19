@@ -6,26 +6,32 @@
   "properties": {
     "$schema": { "type": "string" },
     "heading": {
+      "x-jist-tag": 1,
       "$ref": "#/definitions/headingConfig",
       "description": "Styles for heading components. Supports h2, h3, h4 variant overrides."
     },
     "text": {
+      "x-jist-tag": 2,
       "$ref": "#/definitions/textComponentConfig",
       "description": "Styles for text components. Supports arbitrary named variant overrides."
     },
     "date": {
+      "x-jist-tag": 3,
       "$ref": "#/definitions/textComponentConfig",
       "description": "Styles for date components. Supports arbitrary named variant overrides."
     },
     "button": {
+      "x-jist-tag": 4,
       "$ref": "#/definitions/buttonConfig",
       "description": "Styles for button components. Supports arbitrary named variant overrides (e.g., 'primary', 'secondary')."
     },
     "image": {
+      "x-jist-tag": 5,
       "$ref": "#/definitions/imageConfig",
       "description": "Styles for image components. Supports arbitrary named variant overrides."
     },
     "modes": {
+      "x-jist-tag": 6,
       "$ref": "#/definitions/colorModes",
       "description": "Color mode overrides. Currently supports 'dark'. Only define the values that change — everything else inherits from the base (light) theme."
     }
@@ -45,11 +51,13 @@
       "description": "Text styling properties shared by all text-bearing components.",
       "properties": {
         "fontSize": {
+          "x-jist-tag": 1,
           "type": "number",
           "minimum": 0,
           "description": "Font size (unitless — px/pt/sp)."
         },
         "fontWeight": {
+          "x-jist-tag": 2,
           "type": "number",
           "minimum": 100,
           "maximum": 900,
@@ -57,23 +65,28 @@
           "description": "Font weight (100–900). 400 = normal, 700 = bold."
         },
         "fontFamily": {
+          "x-jist-tag": 3,
           "type": "string",
           "description": "Font family name. Platform resolves to the nearest available font."
         },
         "color": {
+          "x-jist-tag": 4,
           "$ref": "#/definitions/hexColor",
           "description": "Text color."
         },
         "lineHeight": {
+          "x-jist-tag": 5,
           "type": "number",
           "minimum": 0,
           "description": "Line height as a unitless multiplier (e.g., 1.5 = 150% of font size)."
         },
         "letterSpacing": {
+          "x-jist-tag": 6,
           "type": "number",
           "description": "Letter spacing (unitless — px/pt/sp)."
         },
         "maxLines": {
+          "x-jist-tag": 7,
           "type": "integer",
           "minimum": 1,
           "description": "Maximum visible lines. Text beyond this is clamped with an ellipsis."
@@ -87,6 +100,7 @@
       "description": "Background styling.",
       "properties": {
         "color": {
+          "x-jist-tag": 1,
           "$ref": "#/definitions/hexColor",
           "description": "Background color."
         }
@@ -99,15 +113,18 @@
       "description": "Border styling.",
       "properties": {
         "width": {
+          "x-jist-tag": 1,
           "type": "number",
           "minimum": 0,
           "description": "Border width (unitless — px/pt/dp)."
         },
         "color": {
+          "x-jist-tag": 2,
           "$ref": "#/definitions/hexColor",
           "description": "Border color."
         },
         "radius": {
+          "x-jist-tag": 3,
           "type": "number",
           "minimum": 0,
           "description": "Corner radius (unitless — px/pt/dp)."
@@ -121,18 +138,22 @@
       "description": "Shadow styling.",
       "properties": {
         "color": {
+          "x-jist-tag": 1,
           "$ref": "#/definitions/hexColor",
           "description": "Shadow color (use alpha for transparency, e.g., #00000033)."
         },
         "offsetX": {
+          "x-jist-tag": 2,
           "type": "number",
           "description": "Horizontal shadow offset (unitless — px/pt/dp)."
         },
         "offsetY": {
+          "x-jist-tag": 3,
           "type": "number",
           "description": "Vertical shadow offset (unitless — px/pt/dp)."
         },
         "blur": {
+          "x-jist-tag": 4,
           "type": "number",
           "minimum": 0,
           "description": "Shadow blur radius (unitless — px/pt/dp)."
@@ -145,10 +166,10 @@
       "type": "object",
       "description": "Spacing values for padding or margin. All values are unitless (px/pt/dp).",
       "properties": {
-        "top": { "type": "number", "description": "Top spacing." },
-        "right": { "type": "number", "description": "Right spacing." },
-        "bottom": { "type": "number", "description": "Bottom spacing." },
-        "left": { "type": "number", "description": "Left spacing." }
+        "top":    { "x-jist-tag": 1, "type": "number", "description": "Top spacing." },
+        "right":  { "x-jist-tag": 2, "type": "number", "description": "Right spacing." },
+        "bottom": { "x-jist-tag": 3, "type": "number", "description": "Bottom spacing." },
+        "left":   { "x-jist-tag": 4, "type": "number", "description": "Left spacing." }
       },
       "additionalProperties": false
     },
@@ -157,9 +178,9 @@
       "type": "object",
       "description": "Interaction state overrides for buttons. Each state can override any base button style property. Unset properties fall back to the base style.",
       "properties": {
-        "hover": { "$ref": "#/definitions/buttonStateStyle" },
-        "active": { "$ref": "#/definitions/buttonStateStyle" },
-        "disabled": { "$ref": "#/definitions/buttonStateStyle" }
+        "hover":    { "x-jist-tag": 1, "$ref": "#/definitions/buttonStateStyle" },
+        "active":   { "x-jist-tag": 2, "$ref": "#/definitions/buttonStateStyle" },
+        "disabled": { "x-jist-tag": 3, "$ref": "#/definitions/buttonStateStyle" }
       },
       "additionalProperties": false
     },
@@ -168,10 +189,10 @@
       "type": "object",
       "description": "Style overrides for a specific interaction state.",
       "properties": {
-        "text": { "$ref": "#/definitions/textStyle" },
-        "background": { "$ref": "#/definitions/backgroundStyle" },
-        "border": { "$ref": "#/definitions/borderStyle" },
-        "shadow": { "$ref": "#/definitions/shadowStyle" }
+        "text":       { "x-jist-tag": 1, "$ref": "#/definitions/textStyle" },
+        "background": { "x-jist-tag": 2, "$ref": "#/definitions/backgroundStyle" },
+        "border":     { "x-jist-tag": 3, "$ref": "#/definitions/borderStyle" },
+        "shadow":     { "x-jist-tag": 4, "$ref": "#/definitions/shadowStyle" }
       },
       "additionalProperties": false
     },
@@ -180,9 +201,9 @@
       "type": "object",
       "description": "Variant override for a text-bearing component (heading, text, date). Only define the properties that should differ from the base.",
       "properties": {
-        "text": { "$ref": "#/definitions/textStyle" },
-        "padding": { "$ref": "#/definitions/spacingBox" },
-        "margin": { "$ref": "#/definitions/spacingBox" }
+        "text":    { "x-jist-tag": 1, "$ref": "#/definitions/textStyle" },
+        "padding": { "x-jist-tag": 2, "$ref": "#/definitions/spacingBox" },
+        "margin":  { "x-jist-tag": 3, "$ref": "#/definitions/spacingBox" }
       },
       "additionalProperties": false
     },
@@ -191,15 +212,15 @@
       "type": "object",
       "description": "Variant override for a button component. Only define the properties that should differ from the base.",
       "properties": {
-        "text": { "$ref": "#/definitions/textStyle" },
-        "background": { "$ref": "#/definitions/backgroundStyle" },
-        "border": { "$ref": "#/definitions/borderStyle" },
-        "shadow": { "$ref": "#/definitions/shadowStyle" },
-        "padding": { "$ref": "#/definitions/spacingBox" },
-        "margin": { "$ref": "#/definitions/spacingBox" },
-        "minWidth": { "type": "number", "minimum": 0 },
-        "minHeight": { "type": "number", "minimum": 0 },
-        "states": { "$ref": "#/definitions/buttonStates" }
+        "text":       { "x-jist-tag": 1, "$ref": "#/definitions/textStyle" },
+        "background": { "x-jist-tag": 2, "$ref": "#/definitions/backgroundStyle" },
+        "border":     { "x-jist-tag": 3, "$ref": "#/definitions/borderStyle" },
+        "shadow":     { "x-jist-tag": 4, "$ref": "#/definitions/shadowStyle" },
+        "padding":    { "x-jist-tag": 5, "$ref": "#/definitions/spacingBox" },
+        "margin":     { "x-jist-tag": 6, "$ref": "#/definitions/spacingBox" },
+        "minWidth":   { "x-jist-tag": 7, "type": "number", "minimum": 0 },
+        "minHeight":  { "x-jist-tag": 8, "type": "number", "minimum": 0 },
+        "states":     { "x-jist-tag": 9, "$ref": "#/definitions/buttonStates" }
       },
       "additionalProperties": false
     },
@@ -208,9 +229,9 @@
       "type": "object",
       "description": "Variant override for an image component.",
       "properties": {
-        "border": { "$ref": "#/definitions/borderStyle" },
-        "padding": { "$ref": "#/definitions/spacingBox" },
-        "margin": { "$ref": "#/definitions/spacingBox" }
+        "border":  { "x-jist-tag": 1, "$ref": "#/definitions/borderStyle" },
+        "padding": { "x-jist-tag": 2, "$ref": "#/definitions/spacingBox" },
+        "margin":  { "x-jist-tag": 3, "$ref": "#/definitions/spacingBox" }
       },
       "additionalProperties": false
     },
@@ -219,18 +240,21 @@
       "type": "object",
       "description": "Heading component styles. Base properties apply to all headings. Variant sub-objects (h2, h3, h4) override specific properties.",
       "properties": {
-        "text": { "$ref": "#/definitions/textStyle" },
-        "padding": { "$ref": "#/definitions/spacingBox" },
-        "margin": { "$ref": "#/definitions/spacingBox" },
+        "text":    { "x-jist-tag": 1, "$ref": "#/definitions/textStyle" },
+        "padding": { "x-jist-tag": 2, "$ref": "#/definitions/spacingBox" },
+        "margin":  { "x-jist-tag": 3, "$ref": "#/definitions/spacingBox" },
         "h2": {
+          "x-jist-tag": 4,
           "$ref": "#/definitions/textComponentVariant",
           "description": "Style overrides for h2 headings."
         },
         "h3": {
+          "x-jist-tag": 5,
           "$ref": "#/definitions/textComponentVariant",
           "description": "Style overrides for h3 headings."
         },
         "h4": {
+          "x-jist-tag": 6,
           "$ref": "#/definitions/textComponentVariant",
           "description": "Style overrides for h4 headings."
         }
@@ -242,9 +266,9 @@
       "type": "object",
       "description": "Text/date component styles. Base properties apply to all instances. Additional keys are treated as named variant overrides.",
       "properties": {
-        "text": { "$ref": "#/definitions/textStyle" },
-        "padding": { "$ref": "#/definitions/spacingBox" },
-        "margin": { "$ref": "#/definitions/spacingBox" }
+        "text":    { "x-jist-tag": 1, "$ref": "#/definitions/textStyle" },
+        "padding": { "x-jist-tag": 2, "$ref": "#/definitions/spacingBox" },
+        "margin":  { "x-jist-tag": 3, "$ref": "#/definitions/spacingBox" }
       },
       "additionalProperties": {
         "$ref": "#/definitions/textComponentVariant"
@@ -255,23 +279,25 @@
       "type": "object",
       "description": "Button component styles. Base properties apply to all buttons. Additional keys are treated as named variant overrides (e.g., 'primary', 'secondary').",
       "properties": {
-        "text": { "$ref": "#/definitions/textStyle" },
-        "background": { "$ref": "#/definitions/backgroundStyle" },
-        "border": { "$ref": "#/definitions/borderStyle" },
-        "shadow": { "$ref": "#/definitions/shadowStyle" },
-        "padding": { "$ref": "#/definitions/spacingBox" },
-        "margin": { "$ref": "#/definitions/spacingBox" },
+        "text":       { "x-jist-tag": 1, "$ref": "#/definitions/textStyle" },
+        "background": { "x-jist-tag": 2, "$ref": "#/definitions/backgroundStyle" },
+        "border":     { "x-jist-tag": 3, "$ref": "#/definitions/borderStyle" },
+        "shadow":     { "x-jist-tag": 4, "$ref": "#/definitions/shadowStyle" },
+        "padding":    { "x-jist-tag": 5, "$ref": "#/definitions/spacingBox" },
+        "margin":     { "x-jist-tag": 6, "$ref": "#/definitions/spacingBox" },
         "minWidth": {
+          "x-jist-tag": 7,
           "type": "number",
           "minimum": 0,
           "description": "Minimum button width."
         },
         "minHeight": {
+          "x-jist-tag": 8,
           "type": "number",
           "minimum": 0,
           "description": "Minimum button height."
         },
-        "states": { "$ref": "#/definitions/buttonStates" }
+        "states": { "x-jist-tag": 9, "$ref": "#/definitions/buttonStates" }
       },
       "additionalProperties": {
         "$ref": "#/definitions/buttonVariant"
@@ -282,9 +308,9 @@
       "type": "object",
       "description": "Image component styles. Note: sizing/scaling properties (width, height, objectFit) are defined on the template node, not in the theme.",
       "properties": {
-        "border": { "$ref": "#/definitions/borderStyle" },
-        "padding": { "$ref": "#/definitions/spacingBox" },
-        "margin": { "$ref": "#/definitions/spacingBox" }
+        "border":  { "x-jist-tag": 1, "$ref": "#/definitions/borderStyle" },
+        "padding": { "x-jist-tag": 2, "$ref": "#/definitions/spacingBox" },
+        "margin":  { "x-jist-tag": 3, "$ref": "#/definitions/spacingBox" }
       },
       "additionalProperties": {
         "$ref": "#/definitions/imageVariant"
@@ -296,14 +322,15 @@
       "description": "Color mode overrides. Each mode is a sparse override — only define the values that change. Properties not defined in a mode inherit from the base (light) theme.",
       "properties": {
         "dark": {
+          "x-jist-tag": 1,
           "type": "object",
           "description": "Dark mode overrides. Same structure as the top-level theme, but only include properties that change (typically colors).",
           "properties": {
-            "heading": { "$ref": "#/definitions/headingConfig" },
-            "text": { "$ref": "#/definitions/textComponentConfig" },
-            "date": { "$ref": "#/definitions/textComponentConfig" },
-            "button": { "$ref": "#/definitions/buttonConfig" },
-            "image": { "$ref": "#/definitions/imageConfig" }
+            "heading": { "x-jist-tag": 1, "$ref": "#/definitions/headingConfig" },
+            "text":    { "x-jist-tag": 2, "$ref": "#/definitions/textComponentConfig" },
+            "date":    { "x-jist-tag": 3, "$ref": "#/definitions/textComponentConfig" },
+            "button":  { "x-jist-tag": 4, "$ref": "#/definitions/buttonConfig" },
+            "image":   { "x-jist-tag": 5, "$ref": "#/definitions/imageConfig" }
           },
           "additionalProperties": false
         }
