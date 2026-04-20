@@ -109,15 +109,17 @@ Same algorithm. Same cascade order. Same edge cases. Any bug in one needs to be 
 
 ```
 jist-core/src/
-  models.rs              # ~350 LOC Rust (replaces 461 LOC across 3 platforms)
-  theme_resolver.rs      # ~200 LOC Rust (replaces 262 LOC across 2 platforms)
-  font_resolver.rs       # ~150 LOC Rust (replaces ~191 LOC across 2 platforms)
-  validator.rs           # ~100 LOC Rust (new — consolidates per-platform AJV/etc.)
+  models.rs              # ~180 LOC Rust   (replaces 461 LOC written 3× today)
+  theme_resolver.rs      # ~130 LOC Rust   (replaces 262 LOC written 2× today)
+  font_resolver.rs       # ~100 LOC Rust   (replaces 191 LOC written 2× today)
+  validator.rs           #  ~80 LOC Rust   (replaces ~150 LOC of per-platform AJV/equivalent)
                          # ──────────
-                         # ~800 LOC Rust total, replacing ~914 LOC duplicated
+                         # ~490 LOC Rust total, replacing ~1,064 LOC duplicated
 ```
 
-Estimates above are based on typical Rust-vs-Swift/Kotlin LOC ratios for pure data manipulation (Rust usually comes out slightly denser for this kind of code).
+These are single-implementation sizes — one Rust module replaces two or three platform-specific copies. Kotlin is usually slightly more concise than Rust, and Swift is roughly equivalent, so the single-implementation count is in the ballpark of one platform's existing copy, not 1/3 of the combined total.
+
+**Net reduction: ~1,064 LOC → ~490 LOC of logic maintained across the codebase (~54% smaller).**
 
 ### Renderer layer (unchanged, stays per-platform)
 
@@ -131,7 +133,8 @@ web/src/jist-renderer.ts              # 410 LOC — unchanged (except swap in ge
 
 |                           | Today | After migration |
 |---|---|---|
-| Logic LOC duplicated across 2–3 platforms | **~914** | **0** |
+| Total logic LOC maintained across the codebase | **~1,064 LOC** (same concepts written 2–3 times) | **~490 LOC** (each concept once, in Rust) |
+| Logic LOC duplicated across platforms | ~700+ | 0 |
 | Shared-logic source of truth | 3 files in 3 languages | 1 set of files in Rust |
 | Renderer LOC (per-platform native) | 1,375 | 1,375 |
 | Platforms that must be touched for a logic bug | 2–3 | 1 |
