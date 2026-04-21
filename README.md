@@ -178,6 +178,7 @@ JistTheme(fonts = mapOf("DM Sans" to dmSans)) {
         onAction = { event -> Log.d("Jist", event.toString()) }
     )
 }
+```
 
 ## Components
 
