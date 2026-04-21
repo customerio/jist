@@ -22,6 +22,14 @@ const UNITLESS_KEYS = new Set([
   "opacity",
 ]);
 
+// Numeric properties where 0 means "reset to platform default" (CSS `normal`),
+// not a literal zero value. Setting these to 0 breaks the var() fallback chain
+// so the variant doesn't inherit the base heading's value.
+const ZERO_MEANS_NORMAL = new Set([
+  "lineHeight",
+  "letterSpacing",
+]);
+
 type JistMode = "auto" | "light" | "dark";
 
 type ThemeValue = string | number | boolean | null | ThemeObject;
@@ -198,10 +206,13 @@ class JistTemplateElement extends HTMLElement {
       const prop = `${prefix}-${kebab}`;
       if (value !== null && typeof value === "object" && !Array.isArray(value)) {
         this.#flatten(value as ThemeObject, prop);
-      } else if (value !== null && value !== undefined) {
-        // Numeric values get "px" suffix unless they're unitless properties
+      } else if (value !== null && value !== undefined && value !== "") {
+        // Numeric 0 on reset-capable properties means "back to normal" — set the
+        // CSS keyword so the var() chain is broken rather than inheriting the base.
         const cssValue =
-          typeof value === "number" && !UNITLESS_KEYS.has(key)
+          value === 0 && ZERO_MEANS_NORMAL.has(key)
+            ? "normal"
+            : typeof value === "number" && !UNITLESS_KEYS.has(key)
             ? `${value}px`
             : String(value);
         this.style.setProperty(prop, cssValue);

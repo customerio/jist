@@ -1,4 +1,4 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(
@@ -14,14 +14,16 @@ let package = Package(
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0")
     ],
     targets: [
-        .target(name: "Jist"),
+        .target(name: "Jist", swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "JistTests",
             dependencies: [
                 "Jist",
                 .product(name: "SnapshotTesting", package: "swift-snapshot-testing")
             ],
-            exclude: ["__Snapshots__"]
+            exclude: ["__Snapshots__"],
+            resources: [.process("Fonts")],
+            swiftSettings: [.swiftLanguageMode(.v6)]
         )
     ]
 )

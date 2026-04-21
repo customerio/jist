@@ -68,6 +68,21 @@ public struct JistThemeResolver {
         return CGFloat(num)
     }
 
+    public func resolveFont(
+        type: String,
+        variant: String? = nil,
+        group: String,
+        state: String? = nil,
+        size: CGFloat,
+        weight: Font.Weight
+    ) -> Font {
+        guard let val = resolve(type: type, variant: variant, group: group, property: "fontFamily", state: state),
+              let family = val.stringValue, !family.isEmpty else {
+            return .system(size: size, weight: weight)
+        }
+        return JistThemeResolver.resolveFont(family: family, size: size, weight: weight)
+    }
+
     public func resolveInt(
         type: String,
         variant: String? = nil,

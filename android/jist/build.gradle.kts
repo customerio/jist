@@ -3,7 +3,6 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
-    id("app.cash.paparazzi")
 }
 
 android {
@@ -23,12 +22,6 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-
-    sourceSets {
-        getByName("test") {
-            resources.srcDir("../../shared")
-        }
-    }
 }
 
 dependencies {
@@ -40,5 +33,4 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.4")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
-    testImplementation("io.coil-kt.coil3:coil-test:3.0.4")
 }

@@ -15,6 +15,7 @@ targets:
     sources:
       - path: JistExample
       - path: Shared
+      - path: ../Tests/JistTests/Fonts
     dependencies:
       - package: Jist
       - target: JistLiveActivity
@@ -23,6 +24,12 @@ targets:
       properties:
         NSSupportsLiveActivities: true
         UILaunchScreen: {}
+        UIAppFonts:
+          - AbrilFatface-Regular.ttf
+          - DMSans-Regular.ttf
+          - DMSans-Medium.ttf
+          - DMSans-SemiBold.ttf
+          - DMSans-Bold.ttf
   JistLiveActivity:
     type: app-extension
     platform: iOS

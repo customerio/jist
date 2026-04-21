@@ -512,11 +512,21 @@ Colors are hex strings: `"#RRGGBB"` or `"#RRGGBBAA"` for alpha.
 |---|---|---|
 | `fontSize` | number | Font size |
 | `fontWeight` | number | Weight (100–900) |
-| `fontFamily` | string | Font family name |
+| `fontFamily` | string | Font family name or CSS-style stack (e.g. `"Roboto, sans-serif"`) |
 | `color` | string | Text color (hex) |
-| `lineHeight` | number | Line height multiplier |
-| `letterSpacing` | number | Letter spacing |
+| `lineHeight` | number | Line height multiplier (e.g. `1.5` = 150% of font size) |
+| `letterSpacing` | number | Additional letter spacing |
 | `maxLines` | integer | Max visible lines (clamped with ellipsis) |
+
+> **`lineHeight`** is a unitless multiplier on all platforms. Web uses CSS `line-height` directly. iOS applies it as `NSParagraphStyle.lineHeightMultiple` (relative to the font's natural line metrics). Android passes it as an em-unit value to `TextStyle.lineHeight` (relative to font size). Values will be visually close but not pixel-identical across platforms due to differences in how each platform defines line height. Set to `0` to reset to the platform default.
+>
+> **`letterSpacing`** is an absolute value in platform units (px on web, pt on iOS, sp on Android). Set to `0` to reset to the platform default.
+
+#### Font Family
+
+`fontFamily` accepts a **font family name** or a **comma-separated stack** of names evaluated left to right — the first name that resolves to an installed font wins, identical to CSS `font-family`. On web this is passed directly to CSS. On iOS, Jist resolves the name against fonts registered in the app (`UIAppFonts`) and automatically selects the correct weight variant based on `fontWeight` — no code required from the host app. On Android, Jist resolves the stack against the `Map<String, FontFamily>` you register via `JistTheme`.
+
+See [fonts.md](fonts.md) for bundling requirements, weight variant naming conventions, and platform-specific resolution details.
 
 #### Background
 
@@ -688,7 +698,7 @@ If the secondary button needs a distinct dark color, define it explicitly in `mo
 | iOS | `@Environment(\.colorScheme)` | `JistView(name: ..., templates: ..., mode: .dark)` |
 | Android | `isSystemInDarkTheme()` | `JistView(name = ..., templates = ..., mode = JistMode.Dark)` |
 
-**Web implementation:** The theme flattener sets `--jist-*` custom properties as inline styles on the `<jist-template>` element. Numeric values are suffixed with `px` (except unitless properties like `fontWeight`, `maxLines`, `lineHeight`). When dark mode is active, the dark overrides are flattened on top of the base values, replacing them.
+**Web implementation:** The theme flattener sets `--jist-*` custom properties as inline styles on the `<jist-template>` element. Numeric values are suffixed with `px` (except unitless properties like `fontWeight`, `maxLines`, `lineHeight`, `opacity`). When dark mode is active, the dark overrides are flattened on top of the base values, replacing them.
 
 Mode detection uses `window.matchMedia("(prefers-color-scheme: dark)")` with a change listener for auto mode. The CSS `var()` fallback chains handle the cascade naturally:
 
@@ -977,10 +987,17 @@ struct ContentView: View {
 **Public API:**
 
 ```kotlin
+import io.customer.jist.JistTheme
 import io.customer.jist.JistView
 
-@Composable
-fun NotificationCard(name: String, templates: Map<String, JistTemplate>, data: Map<String, Any?>) {
+// Define FontFamily values once at the app level.
+val dmSans = FontFamily(
+    Font(R.font.dm_sans_regular, FontWeight.Normal),
+    Font(R.font.dm_sans_bold, FontWeight.Bold),
+)
+
+// Wrap your root composable with JistTheme — all JistView calls inside inherit these fonts.
+JistTheme(fonts = mapOf("DM Sans" to dmSans)) {
     JistView(
         name = name,
         templates = templates,

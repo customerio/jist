@@ -20,11 +20,14 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -32,25 +35,87 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.floatOrNull
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.staticCompositionLocalOf
 import java.time.format.FormatStyle
 
 private const val MAX_TEMPLATE_DEPTH = 10
 
 private val LocalJistTextAlign = compositionLocalOf { TextAlign.Start }
 
-private fun tightTextStyle(fontSize: TextUnit, fontWeight: FontWeight, color: Color) = TextStyle(
+// Keyed by raw fontFamily string from the theme; value is the resolved FontFamily.
+// staticCompositionLocalOf is used because this map only changes when the theme or JistTheme
+// fonts change — recomposition is never needed at the individual node level.
+internal val LocalJistFontCache = staticCompositionLocalOf<Map<String, FontFamily>> { emptyMap() }
+
+/**
+ * Walks the theme JSON collecting all fontFamily CSS stacks, then resolves each stack against
+ * [fonts] with case-insensitive name matching. Returns a map keyed by raw stack string so
+ * [LocalJistFontCache] lookups remain O(1) at render time.
+ *
+ * Resolution order within a stack mirrors CSS font-family: names are tried left to right;
+ * the first name that matches a key in [fonts] wins.
+ */
+internal fun buildFontCache(theme: JsonObject, fonts: Map<String, FontFamily>): Map<String, FontFamily> {
+    if (fonts.isEmpty()) return emptyMap()
+    // Normalise keys once: lowercase, collapse whitespace.
+    val normalized = fonts.entries.associate { (k, v) -> k.trim().lowercase() to v }
+
+    val cache = mutableMapOf<String, FontFamily>()
+
+    fun resolve(stack: String): FontFamily? {
+        for (name in stack.split(",")) {
+            normalized[name.trim().lowercase()]?.let { return it }
+        }
+        return null
+    }
+
+    fun collect(element: JsonElement) {
+        when (element) {
+            is JsonObject -> element.forEach { (key, value) ->
+                if (key == "fontFamily") {
+                    (value as? JsonPrimitive)?.contentOrNull
+                        ?.takeIf { it.isNotEmpty() }
+                        ?.let { stack ->
+                            if (stack !in cache) {
+                                resolve(stack)?.let { cache[stack] = it }
+                            }
+                        }
+                } else {
+                    collect(value)
+                }
+            }
+            else -> {}
+        }
+    }
+
+    collect(theme)
+    return cache
+}
+
+private fun tightTextStyle(
+    fontSize: TextUnit,
+    fontWeight: FontWeight,
+    color: Color,
+    fontFamily: FontFamily? = null,
+    letterSpacing: TextUnit = TextUnit.Unspecified,
+    lineHeight: TextUnit = TextUnit.Unspecified
+) = TextStyle(
     fontSize = fontSize,
     fontWeight = fontWeight,
     color = color,
+    fontFamily = fontFamily,
+    letterSpacing = letterSpacing,
+    lineHeight = lineHeight,
     platformStyle = PlatformTextStyle(includeFontPadding = false),
     lineHeightStyle = LineHeightStyle(
         alignment = LineHeightStyle.Alignment.Proportional,
-        trim = LineHeightStyle.Trim.Both
+        trim = LineHeightStyle.Trim.None
     )
 )
 
@@ -250,7 +315,12 @@ private fun JistHeadingView(
             fontWeight = JistThemeResolver.fontWeight(
                 resolver.resolveFloat("heading", variant, "text", "fontWeight", fallback = 600f)
             ),
-            color = resolver.resolveColor("heading", variant, "text", "color", fallback = Color.Black)
+            color = resolver.resolveColor("heading", variant, "text", "color", fallback = Color.Black),
+            fontFamily = LocalJistFontCache.current[resolver.resolve("heading", variant, "text", "fontFamily")?.contentOrNull ?: ""],
+            letterSpacing = resolver.resolve("heading", variant, "text", "letterSpacing")?.floatOrNull
+                ?.takeIf { it != 0f }?.sp ?: TextUnit.Unspecified,
+            lineHeight = resolver.resolve("heading", variant, "text", "lineHeight")?.floatOrNull
+                ?.takeIf { it > 0f }?.let { TextUnit(it, TextUnitType.Em) } ?: TextUnit.Unspecified
         ),
         modifier = modifier.semantics { heading() }
     )
@@ -283,7 +353,12 @@ private fun JistTextView(
             fontWeight = JistThemeResolver.fontWeight(
                 resolver.resolveFloat("text", node.variant, "text", "fontWeight", fallback = 400f)
             ),
-            color = resolver.resolveColor("text", node.variant, "text", "color", fallback = Color.DarkGray)
+            color = resolver.resolveColor("text", node.variant, "text", "color", fallback = Color.DarkGray),
+            fontFamily = LocalJistFontCache.current[resolver.resolve("text", node.variant, "text", "fontFamily")?.contentOrNull ?: ""],
+            letterSpacing = resolver.resolve("text", node.variant, "text", "letterSpacing")?.floatOrNull
+                ?.takeIf { it != 0f }?.sp ?: TextUnit.Unspecified,
+            lineHeight = resolver.resolve("text", node.variant, "text", "lineHeight")?.floatOrNull
+                ?.takeIf { it > 0f }?.let { TextUnit(it, TextUnitType.Em) } ?: TextUnit.Unspecified
         ),
         maxLines = maxLines ?: Int.MAX_VALUE,
         overflow = TextOverflow.Ellipsis,
@@ -318,7 +393,12 @@ private fun JistDateView(
             fontWeight = JistThemeResolver.fontWeight(
                 resolver.resolveFloat("date", node.variant, "text", "fontWeight", fallback = 400f)
             ),
-            color = resolver.resolveColor("date", node.variant, "text", "color", fallback = Color.Gray)
+            color = resolver.resolveColor("date", node.variant, "text", "color", fallback = Color.Gray),
+            fontFamily = LocalJistFontCache.current[resolver.resolve("date", node.variant, "text", "fontFamily")?.contentOrNull ?: ""],
+            letterSpacing = resolver.resolve("date", node.variant, "text", "letterSpacing")?.floatOrNull
+                ?.takeIf { it != 0f }?.sp ?: TextUnit.Unspecified,
+            lineHeight = resolver.resolve("date", node.variant, "text", "lineHeight")?.floatOrNull
+                ?.takeIf { it > 0f }?.let { TextUnit(it, TextUnitType.Em) } ?: TextUnit.Unspecified
         ),
         modifier = modifier
     )
@@ -388,7 +468,12 @@ private fun JistButtonView(
                 fontWeight = JistThemeResolver.fontWeight(
                     resolver.resolveFloat("button", node.variant, "text", "fontWeight", fallback = 500f)
                 ),
-                color = textColor
+                color = textColor,
+                fontFamily = LocalJistFontCache.current[resolver.resolve("button", node.variant, "text", "fontFamily")?.contentOrNull ?: ""],
+                letterSpacing = resolver.resolve("button", node.variant, "text", "letterSpacing")?.floatOrNull
+                    ?.takeIf { it != 0f }?.sp ?: TextUnit.Unspecified,
+                lineHeight = resolver.resolve("button", node.variant, "text", "lineHeight")?.floatOrNull
+                    ?.takeIf { it > 0f }?.let { TextUnit(it, TextUnitType.Em) } ?: TextUnit.Unspecified
             )
         )
     }

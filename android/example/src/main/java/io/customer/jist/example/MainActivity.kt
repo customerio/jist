@@ -15,11 +15,23 @@ import androidx.compose.ui.unit.dp
 import io.customer.jist.JistActionEvent
 import io.customer.jist.JistMode
 import io.customer.jist.JistTemplate
+import io.customer.jist.JistTheme
 import io.customer.jist.JistView
 import kotlinx.serialization.json.*
 import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+
+private val abrilFatface = FontFamily(Font(R.font.abril_fatface, FontWeight.Normal))
+private val dmSans = FontFamily(
+    Font(R.font.dm_sans_regular, FontWeight.Normal),
+    Font(R.font.dm_sans_medium, FontWeight.Medium),
+    Font(R.font.dm_sans_semibold, FontWeight.SemiBold),
+    Font(R.font.dm_sans_bold, FontWeight.Bold),
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,7 +42,9 @@ class MainActivity : ComponentActivity() {
         val theme = loadTheme()
 
         setContent {
-            ExampleScreen(templates, dataEntries, theme)
+            JistTheme(fonts = mapOf("Abril Fatface" to abrilFatface, "DM Sans" to dmSans)) {
+                ExampleScreen(templates, dataEntries, theme)
+            }
         }
     }
 

@@ -56,7 +56,7 @@ DEVICE=""
 
 # Check for running device/emulator
 if command -v adb &>/dev/null; then
-    DEVICE=$(adb devices 2>/dev/null | grep -E "emulator|device$" | head -1 | awk '{print $1}')
+    DEVICE=$(adb devices 2>/dev/null | grep -E "emulator|device$" | head -1 | awk '{print $1}') || true
 fi
 
 if [ -z "$DEVICE" ]; then
@@ -83,7 +83,7 @@ if [ -z "$DEVICE" ]; then
     done
     echo "Emulator ready."
 
-    DEVICE=$(adb devices | grep emulator | head -1 | awk '{print $1}')
+    DEVICE=$(adb devices | grep emulator | head -1 | awk '{print $1}') || true
 fi
 
 echo "Using device: $DEVICE"

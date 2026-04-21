@@ -44,22 +44,30 @@ jist-template {
 .jist__heading--h2 {
   font-size: var(--jist-heading-h2-text-font-size, var(--jist-heading-text-font-size, 20px));
   font-weight: var(--jist-heading-h2-text-font-weight, var(--jist-heading-text-font-weight, 700));
+  font-family: var(--jist-heading-h2-text-font-family, var(--jist-heading-text-font-family, inherit));
   color: var(--jist-heading-h2-text-color, var(--jist-heading-text-color, #1a1a2e));
   line-height: var(--jist-heading-h2-text-line-height, var(--jist-heading-text-line-height, 1.3));
+  letter-spacing: var(--jist-heading-h2-text-letter-spacing, var(--jist-heading-text-letter-spacing, normal));
 }
 
 .jist__heading--h3 {
   font-size: var(--jist-heading-h3-text-font-size, var(--jist-heading-text-font-size, 16px));
   font-weight: var(--jist-heading-h3-text-font-weight, var(--jist-heading-text-font-weight, 600));
+  font-family: var(--jist-heading-h3-text-font-family, var(--jist-heading-text-font-family, inherit));
   color: var(--jist-heading-h3-text-color, var(--jist-heading-text-color, #1a1a2e));
   line-height: var(--jist-heading-h3-text-line-height, var(--jist-heading-text-line-height, 1.3));
+  letter-spacing: var(--jist-heading-h3-text-letter-spacing, var(--jist-heading-text-letter-spacing, normal));
 }
 
+/* h4 does not chain through to the base heading for font-family, line-height, or letter-spacing —
+   it uses the system font and should be independent of display-font settings on the base. */
 .jist__heading--h4 {
   font-size: var(--jist-heading-h4-text-font-size, var(--jist-heading-text-font-size, 14px));
   font-weight: var(--jist-heading-h4-text-font-weight, var(--jist-heading-text-font-weight, 500));
+  font-family: var(--jist-heading-h4-text-font-family, inherit);
   color: var(--jist-heading-h4-text-color, var(--jist-heading-text-color, #1a1a2e));
-  line-height: var(--jist-heading-h4-text-line-height, var(--jist-heading-text-line-height, 1.3));
+  line-height: var(--jist-heading-h4-text-line-height, normal);
+  letter-spacing: var(--jist-heading-h4-text-letter-spacing, normal);
 }
 
 /* ── Text ───────────────────────────────── */
