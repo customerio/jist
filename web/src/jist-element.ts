@@ -30,6 +30,53 @@ const ZERO_MEANS_NORMAL = new Set([
   "letterSpacing",
 ]);
 
+// ── Variant CSS generation ─────────────────
+// Maps a flattened theme path suffix to the CSS property it controls.
+// Only leaf properties that appear in a variant's theme data generate CSS.
+const PATH_TO_CSS: Record<string, string> = {
+  "text-font-size": "font-size",
+  "text-font-weight": "font-weight",
+  "text-font-family": "font-family",
+  "text-color": "color",
+  "text-line-height": "line-height",
+  "text-letter-spacing": "letter-spacing",
+  "text-max-lines": "-webkit-line-clamp",
+  "background-color": "background-color",
+  "border-width": "border-width",
+  "border-color": "border-color",
+  "border-radius": "border-radius",
+  "padding-top": "padding-top",
+  "padding-right": "padding-right",
+  "padding-bottom": "padding-bottom",
+  "padding-left": "padding-left",
+  "margin-top": "margin-top",
+  "margin-right": "margin-right",
+  "margin-bottom": "margin-bottom",
+  "margin-left": "margin-left",
+  "min-width": "min-width",
+  "min-height": "min-height",
+};
+
+const SHADOW_PARTS = ["shadow-offset-x", "shadow-offset-y", "shadow-blur", "shadow-color"] as const;
+const SHADOW_DEFAULTS: Record<string, string> = {
+  "shadow-offset-x": "0", "shadow-offset-y": "0", "shadow-blur": "0", "shadow-color": "transparent",
+};
+
+const BASE_KEYS: Record<string, Set<string>> = {
+  heading: new Set(["text", "padding", "margin"]),
+  text: new Set(["text", "padding", "margin"]),
+  date: new Set(["text", "padding", "margin"]),
+  button: new Set(["text", "background", "border", "shadow", "padding", "margin", "minWidth", "minHeight", "states"]),
+  image: new Set(["border", "padding", "margin"]),
+};
+
+const BUTTON_STATES = ["hover", "active", "disabled"] as const;
+
+const BUTTON_STATE_PROPS: Array<[string, string]> = [
+  ["background-color", "background-color"],
+  ["color", "text-color"],
+];
+
 type JistMode = "auto" | "light" | "dark";
 
 type ThemeValue = string | number | boolean | null | ThemeObject;
@@ -49,6 +96,7 @@ class JistTemplateElement extends HTMLElement {
   #templates: Record<string, JistTemplate> = {};
   #mediaQuery: MediaQueryList | null = null;
   #mediaHandler: (() => void) | null = null;
+  #variantStyle: HTMLStyleElement | null = null;
 
   // ── Property API ──────────────────────────
 
@@ -137,6 +185,10 @@ class JistTemplateElement extends HTMLElement {
     if (this.#mediaQuery && this.#mediaHandler) {
       this.#mediaQuery.removeEventListener("change", this.#mediaHandler);
     }
+    if (this.#variantStyle) {
+      this.#variantStyle.remove();
+      this.#variantStyle = null;
+    }
   }
 
   attributeChangedCallback(
@@ -176,7 +228,12 @@ class JistTemplateElement extends HTMLElement {
   }
 
   #applyTheme(): void {
-    if (!this.#theme) return;
+    if (!this.#theme) {
+      if (this.#variantStyle) {
+        this.#variantStyle.textContent = "";
+      }
+      return;
+    }
     if (!this.isConnected) return;
 
     // Clear existing jist custom properties
@@ -197,6 +254,9 @@ class JistTemplateElement extends HTMLElement {
         this.#flatten(darkOverrides, "--jist");
       }
     }
+
+    // Generate variant CSS rules
+    this.#applyVariantCSS();
   }
 
   #flatten(obj: ThemeObject, prefix: string): void {
@@ -218,6 +278,118 @@ class JistTemplateElement extends HTMLElement {
         this.style.setProperty(prop, cssValue);
       }
     }
+  }
+
+  // ── Variant CSS Generation ────────────────
+
+  #applyVariantCSS(): void {
+    const rules: string[] = [];
+    const theme = this.#theme;
+    if (!theme) return;
+
+    const dark = (theme.modes as ThemeObject | undefined)?.dark as ThemeObject | undefined;
+
+    for (const type of Object.keys(BASE_KEYS)) {
+      const base = theme[type] as ThemeObject | undefined;
+      const darkBase = dark?.[type] as ThemeObject | undefined;
+      const baseKeys = BASE_KEYS[type];
+
+      const variantNames = new Set<string>();
+      for (const src of [base, darkBase]) {
+        if (!src) continue;
+        for (const key of Object.keys(src)) {
+          if (!baseKeys.has(key) && !key.startsWith("$")) variantNames.add(key);
+        }
+      }
+
+      for (const variant of variantNames) {
+        const lightData = (base?.[variant] ?? {}) as ThemeObject;
+        const darkData = (darkBase?.[variant] ?? {}) as ThemeObject;
+        rules.push(this.#buildVariantRule(type, variant, lightData, darkData));
+      }
+    }
+
+    if (!this.#variantStyle) {
+      this.#variantStyle = document.createElement("style");
+      this.#variantStyle.setAttribute("data-jist-variants", "");
+      document.head.appendChild(this.#variantStyle);
+    }
+    this.#variantStyle.textContent = rules.join("\n");
+  }
+
+  #buildVariantRule(type: string, variant: string, lightData: ThemeObject, darkData: ThemeObject): string {
+    const kebabVariant = variant.replace(/([A-Z])/g, "-$1").toLowerCase();
+    const cls = `.jist__${type}--${kebabVariant}`;
+
+    // Collect all leaf paths from the variant's theme data (union of light + dark)
+    const paths = new Set<string>();
+    const collectPaths = (obj: ThemeObject, prefix: string) => {
+      for (const [key, value] of Object.entries(obj)) {
+        if (key === "states" || key.startsWith("$")) continue;
+        const kebab = key.replace(/([A-Z])/g, "-$1").toLowerCase();
+        const path = prefix ? `${prefix}-${kebab}` : kebab;
+        if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+          collectPaths(value as ThemeObject, path);
+        } else {
+          paths.add(path);
+        }
+      }
+    };
+    collectPaths(lightData, "");
+    collectPaths(darkData, "");
+
+    const lines: string[] = [];
+    for (const path of paths) {
+      const cssProp = PATH_TO_CSS[path];
+      if (!cssProp) continue;
+      const variantVar = `--jist-${type}-${kebabVariant}-${path}`;
+      const baseVar = `--jist-${type}-${path}`;
+      lines.push(`  ${cssProp}: var(${variantVar}, var(${baseVar}));`);
+    }
+
+    // box-shadow is composite — emit if any shadow sub-property is defined
+    if (type === "button" && [...paths].some((p) => p.startsWith("shadow-"))) {
+      const shadowParts = SHADOW_PARTS.map((part) => {
+        const variantVar = `--jist-button-${kebabVariant}-${part}`;
+        const baseVar = `--jist-button-${part}`;
+        return `var(${variantVar}, var(${baseVar}, ${SHADOW_DEFAULTS[part]}))`;
+      });
+      lines.push(`  box-shadow: ${shadowParts.join(" ")};`);
+    }
+
+    let css = `${cls} {\n${lines.join("\n")}\n}`;
+
+    // Button state pseudo-classes
+    if (type === "button") {
+      const hasStates = (lightData.states as ThemeObject | undefined)
+        || (darkData.states as ThemeObject | undefined);
+      if (hasStates) {
+        for (const state of BUTTON_STATES) {
+          const lightState = (lightData.states as ThemeObject | undefined)?.[state] as ThemeObject | undefined;
+          const darkState = (darkData.states as ThemeObject | undefined)?.[state] as ThemeObject | undefined;
+          if (!lightState && !darkState) continue;
+
+          const statePaths = new Set<string>();
+          if (lightState) collectPaths(lightState, "");
+          if (darkState) collectPaths(darkState, "");
+          // Use statePaths to check which state properties exist, but emit
+          // the full 4-level chain for background-color and text-color since
+          // that's the established pattern for button states
+          const stateLines: string[] = [];
+          for (const [cssProp, suffix] of BUTTON_STATE_PROPS) {
+            const vs = `--jist-button-${kebabVariant}-states-${state}-${suffix}`;
+            const bs = `--jist-button-states-${state}-${suffix}`;
+            const vb = `--jist-button-${kebabVariant}-${suffix}`;
+            const bb = `--jist-button-${suffix}`;
+            stateLines.push(`  ${cssProp}: var(${vs}, var(${bs}, var(${vb}, var(${bb}))));`);
+          }
+          const pseudo = state === "disabled" ? ":disabled" : `:${state}`;
+          css += `\n${cls}${pseudo} {\n${stateLines.join("\n")}\n}`;
+        }
+      }
+    }
+
+    return css;
   }
 
   // ── Rendering ─────────────────────────────
