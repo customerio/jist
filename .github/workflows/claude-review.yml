@@ -1,0 +1,31 @@
+name: "[pr, auto] Claude Code Review"
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: write
+  id-token: write
+
+concurrency:
+  group: claude-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  claude-review:
+    name: "Claude Code Review"
+    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    timeout-minutes: 10
+    runs-on: cio-ubuntu-slim
+    steps:
+      - name: Run Claude Review
+        uses: customerio/cio-actions/automated-pr-review@claude-pr-review-rc3.6
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_app_id: ${{ secrets.CIO_CLAUDE_ASSISTANT_APP_ID }}
+          claude_private_key: ${{ secrets.CIO_CLAUDE_ASSISTANT_APP_PRIVATE_KEY }}
+          gcp_workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          vertex_service_account: ${{ secrets.VERTEX_GCP_SERVICE_ACCOUNT }}
