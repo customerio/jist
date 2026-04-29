@@ -323,6 +323,8 @@ struct JistButtonStyle: ButtonStyle {
         let state: String? = configuration.isPressed ? "active" : nil
         let radius = resolver.resolveNumber(type: "button", variant: variant, group: "border", property: "radius", fallback: 6)
         let borderWidth = resolver.resolveNumber(type: "button", variant: variant, group: "border", property: "width", fallback: 0)
+        let minW = resolver.resolveNumber(type: "button", variant: variant, property: "minWidth", fallback: 0)
+        let minH = resolver.resolveNumber(type: "button", variant: variant, property: "minHeight", fallback: 0)
 
         configuration.label
             .padding(EdgeInsets(
@@ -331,6 +333,7 @@ struct JistButtonStyle: ButtonStyle {
                 bottom:   resolver.resolveNumber(type: "button", variant: variant, group: "padding", property: "bottom", fallback: 8),
                 trailing: resolver.resolveNumber(type: "button", variant: variant, group: "padding", property: "right", fallback: 16)
             ))
+            .frame(minWidth: minW > 0 ? minW : nil, minHeight: minH > 0 ? minH : nil)
             .background(
                 RoundedRectangle(cornerRadius: radius)
                     .fill(resolver.resolveColor(

@@ -45,6 +45,23 @@ class JistThemeResolver(
         return dig(listOf(type, group, property))
     }
 
+    fun resolve(
+        type: String,
+        variant: String? = null,
+        property: String
+    ): JsonPrimitive? {
+        if (isDark) {
+            if (variant != null) {
+                dig(listOf("modes", "dark", type, variant, property))?.let { return it }
+            }
+            dig(listOf("modes", "dark", type, property))?.let { return it }
+        }
+        if (variant != null) {
+            dig(listOf(type, variant, property))?.let { return it }
+        }
+        return dig(listOf(type, property))
+    }
+
     fun resolveColor(
         type: String,
         variant: String? = null,
@@ -66,6 +83,15 @@ class JistThemeResolver(
         fallback: Float
     ): Float {
         return resolve(type, variant, group, property, state)?.floatOrNull ?: fallback
+    }
+
+    fun resolveFloat(
+        type: String,
+        variant: String? = null,
+        property: String,
+        fallback: Float
+    ): Float {
+        return resolve(type, variant, property)?.floatOrNull ?: fallback
     }
 
     fun resolveInt(

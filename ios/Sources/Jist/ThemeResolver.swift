@@ -42,6 +42,23 @@ public struct JistThemeResolver {
         return nil
     }
 
+    public func resolve(
+        type: String,
+        variant: String? = nil,
+        property: String
+    ) -> JistValue? {
+        if isDark {
+            if let v = variant,
+               let val = dig(["modes", "dark", type, v, property]) { return val }
+            if let val = dig(["modes", "dark", type, property]) { return val }
+        }
+        if let v = variant,
+           let val = dig([type, v, property]) { return val }
+        if let val = dig([type, property]) { return val }
+
+        return nil
+    }
+
     public func resolveColor(
         type: String,
         variant: String? = nil,
@@ -64,6 +81,17 @@ public struct JistThemeResolver {
         fallback: CGFloat
     ) -> CGFloat {
         guard let val = resolve(type: type, variant: variant, group: group, property: property, state: state),
+              let num = val.numberValue else { return fallback }
+        return CGFloat(num)
+    }
+
+    public func resolveNumber(
+        type: String,
+        variant: String? = nil,
+        property: String,
+        fallback: CGFloat
+    ) -> CGFloat {
+        guard let val = resolve(type: type, variant: variant, property: property),
               let num = val.numberValue else { return fallback }
         return CGFloat(num)
     }
