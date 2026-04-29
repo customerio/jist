@@ -369,12 +369,6 @@ class JistTemplateElement extends HTMLElement {
           const darkState = (darkData.states as ThemeObject | undefined)?.[state] as ThemeObject | undefined;
           if (!lightState && !darkState) continue;
 
-          const statePaths = new Set<string>();
-          if (lightState) collectPaths(lightState, "");
-          if (darkState) collectPaths(darkState, "");
-          // Use statePaths to check which state properties exist, but emit
-          // the full 4-level chain for background-color and text-color since
-          // that's the established pattern for button states
           const stateLines: string[] = [];
           for (const [cssProp, suffix] of BUTTON_STATE_PROPS) {
             const vs = `--jist-button-${kebabVariant}-states-${state}-${suffix}`;
