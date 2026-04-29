@@ -87,6 +87,12 @@ interface ThemeObject {
 class JistTemplateElement extends HTMLElement {
   static observedAttributes = ["template", "data", "theme", "mode"];
 
+  static #sharedStyle: HTMLStyleElement | null = null;
+  static #nextScopeId = 0;
+  // unscoped CSS → { scopeId, refCount }
+  static #scopes = new Map<string, { id: number; refs: number }>();
+
+  #scopeKey: string | null = null;
   #template: string | null = null;
   #data: JistData | null = null;
   #theme: ThemeObject | null = null;
@@ -96,7 +102,6 @@ class JistTemplateElement extends HTMLElement {
   #templates: Record<string, JistTemplate> = {};
   #mediaQuery: MediaQueryList | null = null;
   #mediaHandler: (() => void) | null = null;
-  #variantStyle: HTMLStyleElement | null = null;
 
   // ── Property API ──────────────────────────
 
@@ -185,10 +190,8 @@ class JistTemplateElement extends HTMLElement {
     if (this.#mediaQuery && this.#mediaHandler) {
       this.#mediaQuery.removeEventListener("change", this.#mediaHandler);
     }
-    if (this.#variantStyle) {
-      this.#variantStyle.remove();
-      this.#variantStyle = null;
-    }
+    this.#releaseScope();
+    JistTemplateElement.#syncSharedStyle();
   }
 
   attributeChangedCallback(
@@ -229,9 +232,8 @@ class JistTemplateElement extends HTMLElement {
 
   #applyTheme(): void {
     if (!this.#theme) {
-      if (this.#variantStyle) {
-        this.#variantStyle.textContent = "";
-      }
+      this.#releaseScope();
+      JistTemplateElement.#syncSharedStyle();
       return;
     }
     if (!this.isConnected) return;
@@ -283,7 +285,7 @@ class JistTemplateElement extends HTMLElement {
   // ── Variant CSS Generation ────────────────
 
   #applyVariantCSS(): void {
-    const rules: string[] = [];
+    const unscopedRules: string[] = [];
     const theme = this.#theme;
     if (!theme) return;
 
@@ -305,19 +307,67 @@ class JistTemplateElement extends HTMLElement {
       for (const variant of variantNames) {
         const lightData = (base?.[variant] ?? {}) as ThemeObject;
         const darkData = (darkBase?.[variant] ?? {}) as ThemeObject;
-        rules.push(this.#buildVariantRule(type, variant, lightData, darkData));
+        unscopedRules.push(this.#buildVariantRule(type, variant, lightData, darkData));
       }
     }
 
-    if (!this.#variantStyle) {
-      this.#variantStyle = document.createElement("style");
-      this.#variantStyle.setAttribute("data-jist-variants", "");
-      document.head.appendChild(this.#variantStyle);
+    const unscopedCSS = unscopedRules.join("\n");
+
+    // Release previous scope before acquiring a new one
+    this.#releaseScope();
+
+    if (!unscopedCSS) return;
+
+    let entry = JistTemplateElement.#scopes.get(unscopedCSS);
+    if (!entry) {
+      entry = { id: JistTemplateElement.#nextScopeId++, refs: 0 };
+      JistTemplateElement.#scopes.set(unscopedCSS, entry);
     }
-    this.#variantStyle.textContent = rules.join("\n");
+    entry.refs++;
+    this.#scopeKey = unscopedCSS;
+    this.setAttribute("data-jist-v", String(entry.id));
+
+    JistTemplateElement.#syncSharedStyle();
   }
 
-  #buildVariantRule(type: string, variant: string, lightData: ThemeObject, darkData: ThemeObject): string {
+  #releaseScope(): void {
+    if (!this.#scopeKey) return;
+    const entry = JistTemplateElement.#scopes.get(this.#scopeKey);
+    if (entry) {
+      entry.refs--;
+      if (entry.refs <= 0) JistTemplateElement.#scopes.delete(this.#scopeKey);
+    }
+    this.#scopeKey = null;
+    this.removeAttribute("data-jist-v");
+  }
+
+  static #syncSharedStyle(): void {
+    if (JistTemplateElement.#scopes.size === 0) {
+      if (JistTemplateElement.#sharedStyle) {
+        JistTemplateElement.#sharedStyle.remove();
+        JistTemplateElement.#sharedStyle = null;
+      }
+      return;
+    }
+    if (!JistTemplateElement.#sharedStyle) {
+      JistTemplateElement.#sharedStyle = document.createElement("style");
+      JistTemplateElement.#sharedStyle.setAttribute("data-jist-variants", "");
+      document.head.appendChild(JistTemplateElement.#sharedStyle);
+    }
+    const parts: string[] = [];
+    for (const [unscopedCSS, { id }] of JistTemplateElement.#scopes) {
+      const scope = `[data-jist-v="${id}"]`;
+      parts.push(unscopedCSS.replace(/^(\.[a-z_-]+)/gm, `${scope} $1`));
+    }
+    JistTemplateElement.#sharedStyle.textContent = parts.join("\n");
+  }
+
+  #buildVariantRule(
+    type: string,
+    variant: string,
+    lightData: ThemeObject,
+    darkData: ThemeObject
+  ): string {
     const kebabVariant = variant.replace(/([A-Z])/g, "-$1").toLowerCase();
     const cls = `.jist__${type}--${kebabVariant}`;
 
