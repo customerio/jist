@@ -9,7 +9,7 @@
       "text": { "fontSize": 15 }
     },
     "h4": {
-      "text": { "fontSize": 14, "fontWeight": 600, "fontFamily": "DM Sans", "letterSpacing": 0}
+      "text": { "fontSize": 14, "fontWeight": 600, "fontFamily": "DM Sans", "letterSpacing": 0, "lineHeight": 0 }
     }
   },
   "text": {
