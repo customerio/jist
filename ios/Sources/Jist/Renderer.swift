@@ -311,6 +311,7 @@ struct JistButtonView: View {
                     .foregroundColor(resolver.resolveColor(type: "button", variant: node.variant, group: "text", property: "color", fallback: .white))
             }
             .buttonStyle(JistButtonStyle(resolver: resolver, variant: node.variant))
+            .fixedSize()
         }
     }
 }
@@ -326,28 +327,36 @@ struct JistButtonStyle: ButtonStyle {
         let minW = resolver.resolveNumber(type: "button", variant: variant, property: "minWidth", fallback: 0)
         let minH = resolver.resolveNumber(type: "button", variant: variant, property: "minHeight", fallback: 0)
 
-        configuration.label
-            .padding(EdgeInsets(
-                top:      resolver.resolveNumber(type: "button", variant: variant, group: "padding", property: "top", fallback: 8),
-                leading:  resolver.resolveNumber(type: "button", variant: variant, group: "padding", property: "left", fallback: 16),
-                bottom:   resolver.resolveNumber(type: "button", variant: variant, group: "padding", property: "bottom", fallback: 8),
-                trailing: resolver.resolveNumber(type: "button", variant: variant, group: "padding", property: "right", fallback: 16)
-            ))
-            .frame(minWidth: minW > 0 ? minW : nil, minHeight: minH > 0 ? minH : nil)
-            .background(
-                RoundedRectangle(cornerRadius: radius)
-                    .fill(resolver.resolveColor(
-                        type: "button", variant: variant, group: "background", property: "color",
-                        state: state, fallback: Color(hex: "#4F46E5")!
-                    ))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: radius)
-                    .stroke(
-                        resolver.resolveColor(type: "button", variant: variant, group: "border", property: "color", state: state, fallback: .clear),
-                        lineWidth: borderWidth
-                    )
-            )
+        ZStack {
+            if minW > 0 || minH > 0 {
+                Color.clear.frame(
+                    width: minW > 0 ? minW : 0,
+                    height: minH > 0 ? minH : 0
+                )
+            }
+
+            configuration.label
+                .padding(EdgeInsets(
+                    top:      resolver.resolveNumber(type: "button", variant: variant, group: "padding", property: "top", fallback: 8),
+                    leading:  resolver.resolveNumber(type: "button", variant: variant, group: "padding", property: "left", fallback: 16),
+                    bottom:   resolver.resolveNumber(type: "button", variant: variant, group: "padding", property: "bottom", fallback: 8),
+                    trailing: resolver.resolveNumber(type: "button", variant: variant, group: "padding", property: "right", fallback: 16)
+                ))
+        }
+        .background(
+            RoundedRectangle(cornerRadius: radius)
+                .fill(resolver.resolveColor(
+                    type: "button", variant: variant, group: "background", property: "color",
+                    state: state, fallback: Color(hex: "#4F46E5")!
+                ))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: radius)
+                .stroke(
+                    resolver.resolveColor(type: "button", variant: variant, group: "border", property: "color", state: state, fallback: .clear),
+                    lineWidth: borderWidth
+                )
+        )
     }
 }
 

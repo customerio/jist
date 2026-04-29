@@ -472,6 +472,7 @@ private fun JistButtonView(
     ) {
         Text(
             text = label,
+            softWrap = false,
             style = tightTextStyle(
                 fontSize = resolver.resolveFloat("button", node.variant, "text", "fontSize", fallback = 14f).sp,
                 fontWeight = JistThemeResolver.fontWeight(
