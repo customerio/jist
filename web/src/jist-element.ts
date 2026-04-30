@@ -231,12 +231,25 @@ class JistTemplateElement extends HTMLElement {
   }
 
   #applyTheme(): void {
+    if (!this.isConnected) {
+      if (!this.#theme) {
+        this.#releaseScope();
+        JistTemplateElement.#syncSharedStyle();
+      }
+      return;
+    }
+
+    if (this.#isDark()) {
+      this.setAttribute("data-jist-dark", "");
+    } else {
+      this.removeAttribute("data-jist-dark");
+    }
+
     if (!this.#theme) {
       this.#releaseScope();
       JistTemplateElement.#syncSharedStyle();
       return;
     }
-    if (!this.isConnected) return;
 
     // Clear existing jist custom properties
     const toRemove: string[] = [];

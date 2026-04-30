@@ -1,0 +1,64 @@
+{
+  "required": {
+    "node": { "type": "button", "name": "cta" },
+    "data": { "cta": { "label": "Click me", "url": "#" } },
+    "theme": {}
+  },
+  "all-properties": {
+    "node": { "type": "button", "name": "cta" },
+    "data": { "cta": { "label": "Styled Button", "url": "#" } },
+    "theme": {
+      "button": {
+        "text": { "fontSize": 16, "fontWeight": 700, "color": "#FFFFFF", "letterSpacing": 1 },
+        "background": { "color": "#DC2626" },
+        "border": { "width": 2, "color": "#991B1B", "radius": 12 },
+        "shadow": { "color": "#0000004D", "offsetX": 0, "offsetY": 4, "blur": 8 },
+        "padding": { "top": 12, "right": 24, "bottom": 12, "left": 24 },
+        "margin": { "top": 8, "right": 4, "bottom": 8, "left": 4 },
+        "minWidth": 160,
+        "minHeight": 44
+      },
+      "modes": {
+        "dark": {
+          "button": {
+            "text": { "color": "#FEE2E2" },
+            "background": { "color": "#7F1D1D" },
+            "border": { "color": "#DC2626" },
+            "shadow": { "color": "#00000080" }
+          }
+        }
+      }
+    }
+  },
+  "variant": {
+    "node": { "type": "button", "name": "cta", "variant": "secondary" },
+    "data": { "cta": { "label": "Secondary", "url": "#" } },
+    "theme": {
+      "button": {
+        "text": { "fontSize": 14, "fontWeight": 600, "color": "#FFFFFF" },
+        "background": { "color": "#2563EB" },
+        "border": { "radius": 8 },
+        "padding": { "top": 10, "right": 20, "bottom": 10, "left": 20 },
+        "secondary": {
+          "text": { "color": "#2563EB" },
+          "background": { "color": "#EFF6FF" },
+          "border": { "width": 1, "color": "#BFDBFE", "radius": 8 },
+          "shadow": { "color": "#0000001A", "offsetX": 0, "offsetY": 1, "blur": 3 },
+          "margin": { "top": 4 }
+        }
+      },
+      "modes": {
+        "dark": {
+          "button": {
+            "background": { "color": "#1D4ED8" },
+            "secondary": {
+              "text": { "color": "#93C5FD" },
+              "background": { "color": "#1E293B" },
+              "border": { "color": "#1E40AF" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

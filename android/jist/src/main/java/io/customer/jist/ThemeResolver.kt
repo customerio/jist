@@ -11,7 +11,7 @@ import kotlinx.serialization.json.intOrNull
 
 class JistThemeResolver(
     private val theme: JsonObject,
-    private val isDark: Boolean
+    val isDark: Boolean
 ) {
     fun resolve(
         type: String,

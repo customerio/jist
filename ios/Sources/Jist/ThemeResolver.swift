@@ -2,7 +2,7 @@ import SwiftUI
 
 public struct JistThemeResolver {
     private let theme: [String: JistValue]
-    private let isDark: Bool
+    public let isDark: Bool
 
     public init(theme: [String: JistValue], isDark: Bool) {
         self.theme = theme
