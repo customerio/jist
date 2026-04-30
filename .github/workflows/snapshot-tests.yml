@@ -150,7 +150,7 @@ jobs:
       - name: Record iOS baselines
         working-directory: ios
         run: |
-          sed -i '' 's|// isRecording = true|isRecording = true|' Tests/JistTests/SnapshotTests.swift
+          sed -i '' 's|// isRecording = true|isRecording = true|' Tests/JistTests/SnapshotTests.swift Tests/JistTests/ComponentSnapshotTests.swift
           swift test || true
 
       # ── Android ──
@@ -168,7 +168,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git checkout -- ios/Tests/JistTests/SnapshotTests.swift
+          git checkout -- ios/Tests/JistTests/SnapshotTests.swift ios/Tests/JistTests/ComponentSnapshotTests.swift
           BRANCH="ci/update-snapshots-$(date +%Y%m%d-%H%M%S)"
           git checkout -b "$BRANCH"
           git add \

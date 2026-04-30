@@ -231,7 +231,8 @@ jist/
 ├── shared/             # Shared fixtures (used by tests and example apps)
 │   ├── templates.json
 │   ├── data.json
-│   └── theme.json
+│   ├── theme.json
+│   └── tests/          # Per-component test fixtures (heading, text, date, button, image)
 ├── builder/            # Visual template editor (Next.js)
 │   └── src/
 ├── web/                # Web renderer (custom element)
@@ -245,11 +246,13 @@ jist/
 
 ## Visual regression testing
 
-Each platform has snapshot tests that render every template with the shared fixtures and compare against committed baseline images. Any pixel-level drift beyond a small tolerance fails the test.
+Each platform has two suites of snapshot tests that compare against committed baseline images. Any pixel-level drift beyond a small tolerance fails the test.
 
-### Test matrix
+All tests use a deterministic `formatDate` (returns `"Apr 1, 2026"`) and placeholder images to ensure reproducible output without network access.
 
-Every platform tests the same combinations:
+### Demo template tests
+
+Render every demo template with the shared fixtures (templates.json, data.json, theme.json) in light and dark mode:
 
 | Template     | Light | Dark |
 |--------------|-------|------|
@@ -263,7 +266,19 @@ Every platform tests the same combinations:
 | profile      | ✓     | ✓    |
 | announcement | ✓     | ✓    |
 
-All tests use a deterministic `formatDate` (returns `"Apr 1, 2026"`) and placeholder images to ensure reproducible output without network access.
+### Component tests
+
+Per-component tests that exercise individual theme properties in isolation. Fixtures live in `shared/tests/{component}.json` — each file defines test cases with a node, data, and theme. The test harness wraps each node in a layout root automatically.
+
+| Component | required | all-properties | variant |
+|-----------|----------|----------------|---------|
+| heading   | light    | light + dark   | light + dark |
+| text      | light    | light + dark   | light + dark |
+| date      | light    | light + dark   | light + dark |
+| button    | light    | light + dark   | light + dark |
+| image     | light    | light + dark   | light + dark |
+
+Three cases per component: **required** (no theme, validates defaults), **all-properties** (every theme property set), **variant** (base + variant, validates cascade). Adding a test case is just a JSON entry — no platform code changes.
 
 ### Platform tools
 
@@ -287,8 +302,8 @@ npx playwright test --update-snapshots    # re-record baselines
 ```bash
 cd ios
 swift test                                # verify against baselines
-# To re-record: uncomment `isRecording = true` in SnapshotTests.swift setUp(),
-# run swift test, then set it back to false and commit the new snapshots.
+# To re-record: uncomment `isRecording = true` in SnapshotTests.swift and
+# ComponentSnapshotTests.swift setUp(), run swift test, then set back to false.
 ```
 
 **Android**
@@ -303,7 +318,7 @@ cd android
 | Platform | Location |
 |----------|----------|
 | Web | `web/tests/__snapshots__/*.png` |
-| iOS | `ios/Tests/JistTests/__Snapshots__/SnapshotTests/*.png` |
+| iOS | `ios/Tests/JistTests/__Snapshots__/SnapshotTests/*.png` (demo), `__Snapshots__/ComponentSnapshotTests/*.png` (component) |
 | Android | `android/example/src/test/snapshots/images/*.png` |
 
 These PNGs are committed to the repo. When a renderer change is intentional, re-record and commit the updated baselines.

@@ -19,7 +19,7 @@
     "text": { "fontSize": 13, "color": "#8E8EA0", "fontWeight": 400, "lineHeight": 1.2, "fontFamily": "DM Sans" }
   },
   "button": {
-    "text": { "color": "#FFFFFF", "fontSize": 13, "fontWeight": 500, "fontFamily": "DM Sans" },
+    "text": { "color": "#FFFFFF", "fontSize": 11, "fontWeight": 500, "fontFamily": "DM Sans" },
     "background": { "color": "#4F46E5" },
     "border": { "radius": 6 },
     "padding": { "top": 7, "right": 14, "bottom": 7, "left": 14 },
