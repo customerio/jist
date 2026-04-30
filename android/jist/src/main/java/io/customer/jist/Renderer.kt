@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
@@ -432,11 +433,19 @@ private fun JistButtonView(
     val radius = resolver.resolveFloat("button", node.variant, "border", "radius", fallback = 6f)
     val borderWidth = resolver.resolveFloat("button", node.variant, "border", "width", fallback = 0f)
     val borderColor = resolver.resolveColor("button", node.variant, "border", "color", fallback = Color.Transparent)
+    val minW = resolver.resolveFloat("button", node.variant, "minWidth", fallback = 0f)
+    val minH = resolver.resolveFloat("button", node.variant, "minHeight", fallback = 0f)
     val shape = RoundedCornerShape(radius.dp)
 
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
+            .then(
+                if (minW > 0 || minH > 0) Modifier.sizeIn(
+                    minWidth = if (minW > 0) minW.dp else Dp.Unspecified,
+                    minHeight = if (minH > 0) minH.dp else Dp.Unspecified
+                ) else Modifier
+            )
             .clip(shape)
             .background(bgColor)
             .then(
@@ -463,6 +472,7 @@ private fun JistButtonView(
     ) {
         Text(
             text = label,
+            softWrap = false,
             style = tightTextStyle(
                 fontSize = resolver.resolveFloat("button", node.variant, "text", "fontSize", fallback = 14f).sp,
                 fontWeight = JistThemeResolver.fontWeight(

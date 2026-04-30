@@ -308,7 +308,7 @@ Action button. **Not rendered** if the bound data field is absent — templates 
 
 **Events:** Fires `onAction` with `{ component: "button", name, data, meta }` on activation.
 
-**Theme properties:** `text`, `background`, `border`, `shadow`, `padding`, `margin`, `states` (hover, active, disabled). Supports arbitrary named variants.
+**Theme properties:** `text`, `background`, `border`, `shadow`, `padding`, `margin`, `minWidth`, `minHeight`, `states` (hover, active, disabled). Supports arbitrary named variants.
 
 **Example:**
 
@@ -560,6 +560,13 @@ See [fonts.md](fonts.md) for bundling requirements, weight variant naming conven
 | `bottom` | number | Bottom spacing |
 | `left` | number | Left spacing |
 
+#### Min Size (button only)
+
+| Property | Type | Description |
+|---|---|---|
+| `minWidth` | number | Minimum width |
+| `minHeight` | number | Minimum height |
+
 ### Style Cascade
 
 Styles resolve using a three-level cascade:
@@ -597,7 +604,7 @@ Variant properties **fall back** to the base type when not set. Setting `button.
 | heading | text, padding, margin |
 | text | text, padding, margin |
 | date | text, padding, margin |
-| button | text, background, border, shadow, padding, margin, states |
+| button | text, background, border, shadow, padding, margin, minWidth, minHeight, states |
 | image | border (radius), padding, margin |
 
 Layout and action are **not themed** — layout is structural (properties come from the template node), action is a behavioral wrapper.
