@@ -969,6 +969,8 @@ struct ContentView: View {
 | `"end"` | `Spacer()` before content |
 | `"center"` | `Spacer()` on both sides |
 | `"space-between"` | `Spacer()` between each child |
+| `"space-around"` | Double `Spacer()` between children, single at edges (1:2 ratio) |
+| `"space-evenly"` | Equal `Spacer()` before, between, and after children |
 
 | `objectFit` | SwiftUI |
 |---|---|
@@ -1025,6 +1027,7 @@ JistTheme(fonts = mapOf("DM Sans" to dmSans)) {
 | `"start"` | `Alignment.Start` |
 | `"end"` | `Alignment.End` |
 | `"center"` | `Alignment.CenterHorizontally` |
+| `"baseline"` | `Modifier.alignByBaseline()` applied to each child in `Row` |
 | `"stretch"` | children use `Modifier.fillMaxWidth()` |
 
 | `justify` | Compose arrangement |

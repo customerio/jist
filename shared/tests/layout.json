@@ -1,0 +1,84 @@
+{
+  "space-around": {
+    "node": {
+      "type": "layout",
+      "direction": "horizontal",
+      "justify": "space-around",
+      "children": [
+        { "type": "button", "name": "a" },
+        { "type": "button", "name": "b" },
+        { "type": "button", "name": "c" }
+      ]
+    },
+    "data": {
+      "a": { "label": "One" },
+      "b": { "label": "Two" },
+      "c": { "label": "Three" }
+    },
+    "theme": {
+      "button": {
+        "text": { "fontSize": 12, "fontWeight": 500, "color": "#FFFFFF" },
+        "background": { "color": "#4F46E5" },
+        "border": { "radius": 6 },
+        "padding": { "top": 6, "right": 12, "bottom": 6, "left": 12 }
+      },
+      "modes": { "dark": { "button": { "background": { "color": "#6366F1" } } } }
+    }
+  },
+  "space-evenly": {
+    "node": {
+      "type": "layout",
+      "direction": "horizontal",
+      "justify": "space-evenly",
+      "children": [
+        { "type": "button", "name": "a" },
+        { "type": "button", "name": "b" },
+        { "type": "button", "name": "c" }
+      ]
+    },
+    "data": {
+      "a": { "label": "One" },
+      "b": { "label": "Two" },
+      "c": { "label": "Three" }
+    },
+    "theme": {
+      "button": {
+        "text": { "fontSize": 12, "fontWeight": 500, "color": "#FFFFFF" },
+        "background": { "color": "#4F46E5" },
+        "border": { "radius": 6 },
+        "padding": { "top": 6, "right": 12, "bottom": 6, "left": 12 }
+      },
+      "modes": { "dark": { "button": { "background": { "color": "#6366F1" } } } }
+    }
+  },
+  "baseline": {
+    "node": {
+      "type": "layout",
+      "direction": "horizontal",
+      "align": "baseline",
+      "gap": 8,
+      "children": [
+        { "type": "heading", "name": "big" },
+        { "type": "text", "name": "small" }
+      ]
+    },
+    "data": {
+      "big": "2.4k",
+      "small": "total views this week"
+    },
+    "theme": {
+      "heading": {
+        "text": { "fontSize": 28, "fontWeight": 700, "color": "#1E293B" }
+      },
+      "text": {
+        "text": { "fontSize": 13, "color": "#64748B" }
+      },
+      "modes": {
+        "dark": {
+          "heading": { "text": { "color": "#F1F5F9" } },
+          "text": { "text": { "color": "#94A3B8" } }
+        }
+      }
+    }
+  }
+}

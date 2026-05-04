@@ -232,7 +232,7 @@ jist/
 │   ├── templates.json
 │   ├── data.json
 │   ├── theme.json
-│   └── tests/          # Per-component test fixtures (heading, text, date, button, image)
+│   └── tests/          # Per-component test fixtures (heading, text, date, button, image, layout)
 ├── builder/            # Visual template editor (Next.js)
 │   └── src/
 ├── web/                # Web renderer (custom element)
@@ -264,6 +264,7 @@ Render every demo template with the shared fixtures (templates.json, data.json, 
 | hero         | ✓     | ✓    |
 | inbox        | ✓     | ✓    |
 | profile      | ✓     | ✓    |
+| stats        | ✓     | ✓    |
 | announcement | ✓     | ✓    |
 
 ### Component tests
@@ -277,8 +278,9 @@ Per-component tests that exercise individual theme properties in isolation. Fixt
 | date      | light    | light + dark   | light + dark |
 | button    | light    | light + dark   | light + dark |
 | image     | light    | light + dark   | light + dark |
+| layout    | space-around | space-evenly | baseline |
 
-Three cases per component: **required** (no theme, validates defaults), **all-properties** (every theme property set), **variant** (base + variant, validates cascade). Adding a test case is just a JSON entry — no platform code changes.
+Three cases per component: **required** (no theme, validates defaults), **all-properties** (every theme property set), **variant** (base + variant, validates cascade). Layout tests exercise justify and align values. Adding a test case is just a JSON entry — no platform code changes.
 
 ### Platform tools
 

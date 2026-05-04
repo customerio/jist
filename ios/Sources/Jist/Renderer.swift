@@ -66,8 +66,8 @@ struct JistLayoutView: View {
     private var isStretch: Bool { node.align == nil || node.align == "stretch" }
 
     var body: some View {
-        let useSpaceBetween = justify == "space-between"
-        let spacing = useSpaceBetween ? 0 : (node.gap ?? 0)
+        let usesSpacerJustify = justify == "space-between" || justify == "space-around" || justify == "space-evenly"
+        let spacing: CGFloat = usesSpacerJustify ? 0 : (node.gap ?? 0)
 
         Group {
             if isVertical {
@@ -113,6 +113,10 @@ struct JistLayoutView: View {
             Spacer(minLength: 0)
         case "space-between":
             spaceBetweenChildren
+        case "space-around":
+            spaceAroundChildren
+        case "space-evenly":
+            spaceEvenlyChildren
         default:
             children
         }
@@ -133,6 +137,31 @@ struct JistLayoutView: View {
             }
             childView(node.children[i])
         }
+    }
+
+    @ViewBuilder
+    private var spaceAroundChildren: some View {
+        let halfGap = (node.gap ?? 0) / 2
+        ForEach(0..<node.children.count, id: \.self) { i in
+            if i == 0 {
+                Spacer(minLength: halfGap)
+            } else {
+                Spacer(minLength: halfGap)
+                Spacer(minLength: halfGap)
+            }
+            childView(node.children[i])
+        }
+        Spacer(minLength: halfGap)
+    }
+
+    @ViewBuilder
+    private var spaceEvenlyChildren: some View {
+        let gap = node.gap ?? 0
+        ForEach(0..<node.children.count, id: \.self) { i in
+            Spacer(minLength: gap)
+            childView(node.children[i])
+        }
+        Spacer(minLength: gap)
     }
 
     @ViewBuilder
@@ -488,29 +517,73 @@ struct JistDynamicLayoutView: View {
     var templateDepth: Int = 0
 
     private var isVertical: Bool { (node.direction ?? "vertical") == "vertical" }
+    private var justify: String { node.justify ?? "start" }
 
     var body: some View {
         guard let array = data[node.name]?.arrayValue else {
             return AnyView(EmptyView())
         }
-        let gap = node.gap ?? 0
+        let usesSpacerJustify = justify == "space-between" || justify == "space-around" || justify == "space-evenly"
+        let spacing: CGFloat = usesSpacerJustify ? 0 : (node.gap ?? 0)
 
         return AnyView(Group {
             if isVertical {
-                VStack(alignment: vAlignment, spacing: gap) {
-                    ForEach(0..<array.count, id: \.self) { i in
-                        itemView(array[i])
-                    }
+                VStack(alignment: vAlignment, spacing: spacing) {
+                    justifiedItems(array)
                 }
             } else {
-                HStack(alignment: hAlignment, spacing: gap) {
-                    ForEach(0..<array.count, id: \.self) { i in
-                        itemView(array[i])
-                    }
+                HStack(alignment: hAlignment, spacing: spacing) {
+                    justifiedItems(array)
                 }
             }
         }
         .modifier(MarginModifier(margin: node.margin)))
+    }
+
+    @ViewBuilder
+    private func justifiedItems(_ array: [JistValue]) -> some View {
+        switch justify {
+        case "end":
+            Spacer(minLength: 0)
+            items(array)
+        case "center":
+            Spacer(minLength: 0)
+            items(array)
+            Spacer(minLength: 0)
+        case "space-between":
+            ForEach(0..<array.count, id: \.self) { i in
+                if i > 0 { Spacer(minLength: node.gap ?? 0) }
+                itemView(array[i])
+            }
+        case "space-around":
+            let halfGap = (node.gap ?? 0) / 2
+            ForEach(0..<array.count, id: \.self) { i in
+                if i == 0 {
+                    Spacer(minLength: halfGap)
+                } else {
+                    Spacer(minLength: halfGap)
+                    Spacer(minLength: halfGap)
+                }
+                itemView(array[i])
+            }
+            Spacer(minLength: halfGap)
+        case "space-evenly":
+            let gap = node.gap ?? 0
+            ForEach(0..<array.count, id: \.self) { i in
+                Spacer(minLength: gap)
+                itemView(array[i])
+            }
+            Spacer(minLength: gap)
+        default:
+            items(array)
+        }
+    }
+
+    @ViewBuilder
+    private func items(_ array: [JistValue]) -> some View {
+        ForEach(0..<array.count, id: \.self) { i in
+            itemView(array[i])
+        }
     }
 
     @ViewBuilder
