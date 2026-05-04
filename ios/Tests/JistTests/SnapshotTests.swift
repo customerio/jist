@@ -71,6 +71,10 @@ final class JistSnapshotTests: XCTestCase {
         assertTemplateSnapshot("profile", mode: .light)
     }
 
+    func testStatsLight() {
+        assertTemplateSnapshot("stats", mode: .light)
+    }
+
     func testAnnouncementLight() {
         assertTemplateSnapshot("announcement", mode: .light)
     }
@@ -103,6 +107,10 @@ final class JistSnapshotTests: XCTestCase {
 
     func testProfileDark() {
         assertTemplateSnapshot("profile", mode: .dark)
+    }
+
+    func testStatsDark() {
+        assertTemplateSnapshot("stats", mode: .dark)
     }
 
     func testAnnouncementDark() {

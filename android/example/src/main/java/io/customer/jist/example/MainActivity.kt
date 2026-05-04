@@ -79,7 +79,7 @@ fun ExampleScreen(
 ) {
     var isDarkMode by remember { mutableStateOf(false) }
     val actionLog = remember { mutableStateListOf<String>() }
-    val templateOrder = listOf("basic", "image", "cta", "action", "hero", "inbox", "profile", "announcement")
+    val templateOrder = listOf("basic", "image", "cta", "action", "hero", "inbox", "profile", "stats", "announcement")
 
     val colorScheme = if (isDarkMode) darkColorScheme() else lightColorScheme()
 

@@ -196,11 +196,15 @@ private fun JistLayoutView(
             modifier = modifier.then(marginMod)
         ) {
             val needsWeight = effectiveJustify == null || effectiveJustify == "start"
+            val usesDistribution = effectiveJustify == "space-between" || effectiveJustify == "space-around" || effectiveJustify == "space-evenly"
+            val useBaseline = node.align == "baseline"
             node.children.forEach { child ->
-                val childMod = when {
+                val baseMod = when {
                     needsWeight && child is JistNode.Layout -> Modifier.weight(1f)
+                    usesDistribution && child is JistNode.Layout -> Modifier.width(IntrinsicSize.Max)
                     else -> Modifier
                 }
+                val childMod = if (useBaseline) baseMod.alignByBaseline() else baseMod
                 JistNodeView(child, data, resolver, formatDate, onAction, childMod, templates, templateDepth)
             }
         }
