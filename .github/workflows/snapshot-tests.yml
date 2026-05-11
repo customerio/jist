@@ -24,6 +24,7 @@ env:
   UBUNTU_RUNNER: ubuntu-24.04
   NODE_VERSION: "20"
   JAVA_VERSION: "17"
+  IOS_SIMULATOR: iPhone 17 Pro
 
 jobs:
   # ── Verify mode (push / PR) ──────────────────────────────────
@@ -75,7 +76,11 @@ jobs:
           fi
           xcodebuild -version
 
-      - run: swift test
+      - run: >-
+          xcodebuild test
+          -scheme Jist
+          -destination 'platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }}'
+          -skipPackagePluginValidation
 
       - name: Upload diff artifacts
         if: failure()
@@ -151,7 +156,10 @@ jobs:
         working-directory: ios
         run: |
           sed -i '' 's|// isRecording = true|isRecording = true|' Tests/JistTests/SnapshotTests.swift Tests/JistTests/ComponentSnapshotTests.swift
-          swift test || true
+          xcodebuild test \
+            -scheme Jist \
+            -destination 'platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }}' \
+            -skipPackagePluginValidation || true
 
       # ── Android ──
       - uses: actions/setup-java@v5

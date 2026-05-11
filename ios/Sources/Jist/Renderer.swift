@@ -6,10 +6,19 @@ private struct JistStretchKey: EnvironmentKey {
     static let defaultValue = false
 }
 
-private extension EnvironmentValues {
-    var jistStretch: Bool {
+struct JistImageProviderKey: EnvironmentKey {
+    static let defaultValue: (@MainActor @Sendable (URL) -> Image?)? = nil
+}
+
+extension EnvironmentValues {
+    fileprivate var jistStretch: Bool {
         get { self[JistStretchKey.self] }
         set { self[JistStretchKey.self] = newValue }
+    }
+
+    public var jistImageProvider: (@MainActor @Sendable (URL) -> Image?)? {
+        get { self[JistImageProviderKey.self] }
+        set { self[JistImageProviderKey.self] = newValue }
     }
 }
 
@@ -447,6 +456,7 @@ struct JistImageView: View {
     let node: JistImageNode
     let data: [String: JistValue]
     let resolver: JistThemeResolver
+    @Environment(\.jistImageProvider) private var imageProvider
 
     private var isFill: Bool {
         if case .fill = node.width { return true }
@@ -461,6 +471,31 @@ struct JistImageView: View {
     var body: some View {
         if let urlStr = data[node.name]?.stringValue,
            let url = URL(string: urlStr) {
+            imageContent(url: url)
+                .frame(width: fixedWidth, height: node.height)
+                .frame(maxWidth: isFill ? .infinity : nil)
+                .clipShape(RoundedRectangle(cornerRadius: node.borderRadius ?? resolver.resolveNumber(type: "image", variant: node.variant, group: "border", property: "radius", fallback: 0)))
+                .accessibilityLabel(data["title"]?.stringValue ?? "")
+                .padding(EdgeInsets(
+                    top: resolver.resolveNumber(type: "image", variant: node.variant, group: "padding", property: "top", fallback: 0),
+                    leading: resolver.resolveNumber(type: "image", variant: node.variant, group: "padding", property: "left", fallback: 0),
+                    bottom: resolver.resolveNumber(type: "image", variant: node.variant, group: "padding", property: "bottom", fallback: 0),
+                    trailing: resolver.resolveNumber(type: "image", variant: node.variant, group: "padding", property: "right", fallback: 0)
+                ))
+                .padding(EdgeInsets(
+                    top: resolver.resolveNumber(type: "image", variant: node.variant, group: "margin", property: "top", fallback: 0),
+                    leading: resolver.resolveNumber(type: "image", variant: node.variant, group: "margin", property: "left", fallback: 0),
+                    bottom: resolver.resolveNumber(type: "image", variant: node.variant, group: "margin", property: "bottom", fallback: 0),
+                    trailing: resolver.resolveNumber(type: "image", variant: node.variant, group: "margin", property: "right", fallback: 0)
+                ))
+        }
+    }
+
+    @ViewBuilder
+    private func imageContent(url: URL) -> some View {
+        if let provider = imageProvider, let image = provider(url) {
+            applyFit(image.resizable())
+        } else {
             AsyncImage(url: url) { phase in
                 switch phase {
                 case .success(let image):
@@ -473,22 +508,6 @@ struct JistImageView: View {
                     EmptyView()
                 }
             }
-            .frame(width: fixedWidth, height: node.height)
-            .frame(maxWidth: isFill ? .infinity : nil)
-            .clipShape(RoundedRectangle(cornerRadius: node.borderRadius ?? resolver.resolveNumber(type: "image", variant: node.variant, group: "border", property: "radius", fallback: 0)))
-            .accessibilityLabel(data["title"]?.stringValue ?? "")
-            .padding(EdgeInsets(
-                top: resolver.resolveNumber(type: "image", variant: node.variant, group: "padding", property: "top", fallback: 0),
-                leading: resolver.resolveNumber(type: "image", variant: node.variant, group: "padding", property: "left", fallback: 0),
-                bottom: resolver.resolveNumber(type: "image", variant: node.variant, group: "padding", property: "bottom", fallback: 0),
-                trailing: resolver.resolveNumber(type: "image", variant: node.variant, group: "padding", property: "right", fallback: 0)
-            ))
-            .padding(EdgeInsets(
-                top: resolver.resolveNumber(type: "image", variant: node.variant, group: "margin", property: "top", fallback: 0),
-                leading: resolver.resolveNumber(type: "image", variant: node.variant, group: "margin", property: "left", fallback: 0),
-                bottom: resolver.resolveNumber(type: "image", variant: node.variant, group: "margin", property: "bottom", fallback: 0),
-                trailing: resolver.resolveNumber(type: "image", variant: node.variant, group: "margin", property: "right", fallback: 0)
-            ))
         }
     }
 
