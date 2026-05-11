@@ -20,12 +20,6 @@ Audit of spec v1 against all three platform implementations.
 
 **Android:** `JistButtonView` in `Renderer.kt:464-549` has no state-dependent styling at all.
 
-### Image variant support
-
-Variant support via theme needs verification on native.
-
----
-
 ## Summary
 
 | Platform | Open gaps |
@@ -47,3 +41,4 @@ Variant support via theme needs verification on native.
 | Button shadow | iOS, Android | Shadow modifiers added |
 | Button margin | iOS, Android | Margin modifiers added |
 | Image theme properties (border, padding, margin) | iOS, Android | Theme resolver calls added |
+| Image variant support via theme | Web, iOS, Android | Verified — `thumbnail` variant snapshot tests pass on all platforms (border-radius, padding, margin overrides) |
