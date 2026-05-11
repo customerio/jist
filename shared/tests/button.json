@@ -60,5 +60,62 @@
         }
       }
     }
+  },
+  "disabled": {
+    "node": { "type": "button", "name": "cta" },
+    "data": { "cta": { "label": "Disabled", "url": "#", "disabled": true } },
+    "theme": {
+      "button": {
+        "text": { "color": "#FFFFFF" },
+        "background": { "color": "#4F46E5" },
+        "border": { "radius": 8 },
+        "padding": { "top": 10, "right": 24, "bottom": 10, "left": 24 },
+        "states": {
+          "disabled": {
+            "background": { "color": "#C7D2FE" },
+            "text": { "color": "#818CF8" }
+          }
+        }
+      },
+      "modes": {
+        "dark": {
+          "button": {
+            "background": { "color": "#4338CA" },
+            "text": { "color": "#E0E7FF" },
+            "states": {
+              "disabled": {
+                "background": { "color": "#312E81" },
+                "text": { "color": "#6366F1" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "states": {
+    "node": { "type": "button", "name": "cta" },
+    "data": { "cta": { "label": "With States", "url": "#" } },
+    "theme": {
+      "button": {
+        "text": { "color": "#FFFFFF" },
+        "background": { "color": "#4F46E5" },
+        "border": { "radius": 8 },
+        "padding": { "top": 10, "right": 24, "bottom": 10, "left": 24 },
+        "states": {
+          "hover": {
+            "background": { "color": "#4338CA" },
+            "text": { "color": "#E0E7FF" }
+          },
+          "active": {
+            "background": { "color": "#3730A3" }
+          },
+          "disabled": {
+            "background": { "color": "#C7D2FE" },
+            "text": { "color": "#818CF8" }
+          }
+        }
+      }
+    }
   }
 }

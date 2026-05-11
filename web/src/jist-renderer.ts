@@ -101,6 +101,7 @@ export interface JistTemplate {
 export interface JistButtonData {
   label: string;
   url: string;
+  disabled?: boolean;
 }
 
 export type JistData = Record<string, unknown>;
@@ -324,6 +325,7 @@ export default class JistRenderer {
     const el = document.createElement("button");
     this.#applyClasses(el, "button", name, node.variant);
     el.textContent = buttonData.label;
+    if (buttonData.disabled) el.disabled = true;
     const meta = node.meta || null;
     el.addEventListener("click", (e: Event) => {
       e.stopPropagation();

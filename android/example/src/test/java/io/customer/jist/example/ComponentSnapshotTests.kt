@@ -5,9 +5,17 @@ import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import coil3.SingletonImageLoader
@@ -18,6 +26,7 @@ import com.android.ide.common.rendering.api.SessionParams
 import io.customer.jist.JistJson
 import io.customer.jist.JistMode
 import io.customer.jist.JistTemplate
+import io.customer.jist.JistThemeResolver
 import io.customer.jist.JistView
 import kotlinx.serialization.json.*
 import org.junit.Before
@@ -55,6 +64,30 @@ class ComponentSnapshotTests {
         val candidate = File(System.getProperty("user.dir")).resolve("../shared/tests")
         if (candidate.isDirectory) candidate
         else File(System.getProperty("user.dir")).resolve("../../shared/tests")
+    }
+
+    @Test
+    fun buttonInteractionStates() {
+        val fixture = Json.parseToJsonElement(
+            File(sharedTestsDir, "button.json").readText()
+        ).jsonObject
+        val statesCase = fixture["states"]!!.jsonObject
+        val theme = statesCase["theme"]!!.jsonObject
+
+        for ((stateName, state) in listOf("default" to null, "hover" to "hover", "active" to "active", "disabled" to "disabled")) {
+            for (mode in listOf(JistMode.Light, JistMode.Dark)) {
+                val modeName = if (mode == JistMode.Light) "light" else "dark"
+                val bg = if (mode == JistMode.Light) Color.White else Color.Black
+                val isDark = mode == JistMode.Dark
+                val resolver = JistThemeResolver(theme, isDark)
+
+                paparazzi.snapshot(name = "button_state_${stateName}_${modeName}") {
+                    Box(modifier = Modifier.background(bg).padding(16.dp)) {
+                        ButtonStatePreview(resolver = resolver, variant = null, state = state, label = stateName.replaceFirstChar { it.uppercase() })
+                    }
+                }
+            }
+        }
     }
 
     @Test
@@ -100,5 +133,39 @@ class ComponentSnapshotTests {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ButtonStatePreview(
+    resolver: JistThemeResolver,
+    variant: String?,
+    state: String?,
+    label: String
+) {
+    val bgColor = resolver.resolveColor("button", variant, "background", "color", state = state, fallback = Color(0xFF4F46E5))
+    val textColor = resolver.resolveColor("button", variant, "text", "color", state = state, fallback = Color.White)
+    val radius = resolver.resolveFloat("button", variant, "border", "radius", fallback = 6f)
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .clip(RoundedCornerShape(radius.dp))
+            .background(bgColor)
+            .padding(
+                start = resolver.resolveFloat("button", variant, "padding", "left", fallback = 16f).dp,
+                top = resolver.resolveFloat("button", variant, "padding", "top", fallback = 8f).dp,
+                end = resolver.resolveFloat("button", variant, "padding", "right", fallback = 16f).dp,
+                bottom = resolver.resolveFloat("button", variant, "padding", "bottom", fallback = 8f).dp
+            )
+    ) {
+        Text(
+            text = label,
+            style = TextStyle(
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = textColor
+            )
+        )
     }
 }
