@@ -11,7 +11,7 @@ struct JistImageProviderKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
-    private var jistStretch: Bool {
+    fileprivate var jistStretch: Bool {
         get { self[JistStretchKey.self] }
         set { self[JistStretchKey.self] = newValue }
     }
