@@ -86,6 +86,17 @@ final class ComponentSnapshotTests: XCTestCase {
 
     private static let imagePlaceholder = createPlaceholderPNG(width: 400, height: 200, hex: "#94a3b8")
 
+    private static func loadLocalImage(_ url: URL) -> Image? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        #if os(macOS)
+        guard let nsImage = NSImage(data: data) else { return nil }
+        return Image(nsImage: nsImage)
+        #else
+        guard let uiImage = UIImage(data: data) else { return nil }
+        return Image(uiImage: uiImage)
+        #endif
+    }
+
     // MARK: - Main Test
 
     func testAllComponentFixtures() throws {
@@ -176,6 +187,7 @@ final class ComponentSnapshotTests: XCTestCase {
                     .padding()
                     .background(mode == .dark ? Color.black : Color.white)
                     .environment(\.colorScheme, colorScheme)
+                    .environment(\.jistImageProvider, Self.loadLocalImage)
 
                     assertComponentSnapshot(
                         view: view,
@@ -213,10 +225,6 @@ final class ComponentSnapshotTests: XCTestCase {
         window.contentView = hostingView
         window.orderBack(nil)
 
-        // Let AsyncImage load the local placeholder files
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 1.0))
-
-        // Re-layout now that images have loaded
         let fittingSize = hostingView.fittingSize
         let finalSize = NSSize(width: 390, height: max(fittingSize.height, 50))
         hostingView.frame.size = finalSize
@@ -237,9 +245,6 @@ final class ComponentSnapshotTests: XCTestCase {
         let viewController = UIHostingController(rootView: view)
         viewController.view.frame = CGRect(x: 0, y: 0, width: 390, height: 0)
         viewController.view.backgroundColor = mode == .dark ? .black : .white
-
-        // Let AsyncImage load the local placeholder files
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 1.0))
 
         let fittingSize = viewController.view.systemLayoutSizeFitting(
             CGSize(width: 390, height: UIView.layoutFittingCompressedSize.height),

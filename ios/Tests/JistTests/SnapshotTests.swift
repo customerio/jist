@@ -159,6 +159,17 @@ final class JistSnapshotTests: XCTestCase {
     /// 96x96 indigo placeholder for the avatar image
     private static let avatarPlaceholder = createPlaceholderPNG(width: 96, height: 96, hex: "#c7d2fe")
 
+    private static func loadLocalImage(_ url: URL) -> Image? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        #if os(macOS)
+        guard let nsImage = NSImage(data: data) else { return nil }
+        return Image(nsImage: nsImage)
+        #else
+        guard let uiImage = UIImage(data: data) else { return nil }
+        return Image(uiImage: uiImage)
+        #endif
+    }
+
     /// Replaces remote image URLs in test data with local placeholder file URLs.
     private func withPlaceholderImages(_ data: [String: JistValue]) -> [String: JistValue] {
         var result = data
@@ -205,13 +216,12 @@ final class JistSnapshotTests: XCTestCase {
         .padding()
         .background(mode == .dark ? Color.black : Color.white)
         .environment(\.colorScheme, colorScheme)
+        .environment(\.jistImageProvider, Self.loadLocalImage)
 
         #if os(macOS)
         let hostingView = NSHostingView(rootView: view)
         hostingView.frame = NSRect(x: 0, y: 0, width: 390, height: 600)
 
-        // AsyncImage requires the view to be in a live window hierarchy
-        // for SwiftUI to process async loads.
         let window = NSWindow(
             contentRect: NSRect(x: -10000, y: -10000, width: 390, height: 600),
             styleMask: [.borderless],
@@ -222,15 +232,10 @@ final class JistSnapshotTests: XCTestCase {
         window.contentView = hostingView
         window.orderBack(nil)
 
-        // Let AsyncImage load the local placeholder files
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 1.0))
-
-        // Re-layout now that images have loaded
         let fittingSize = hostingView.fittingSize
         let finalSize = NSSize(width: 390, height: max(fittingSize.height, 100))
         hostingView.frame.size = finalSize
 
-        // Render to a 1x bitmap so snapshots are identical on Retina and non-Retina displays.
         let image = renderViewAt1x(hostingView, size: finalSize)
 
         assertSnapshot(
@@ -247,9 +252,6 @@ final class JistSnapshotTests: XCTestCase {
         let viewController = UIHostingController(rootView: view)
         viewController.view.frame = CGRect(x: 0, y: 0, width: 390, height: 0)
         viewController.view.backgroundColor = mode == .dark ? .black : .white
-
-        // Let AsyncImage load the local placeholder files
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 1.0))
 
         let fittingSize = viewController.view.systemLayoutSizeFitting(
             CGSize(width: 390, height: UIView.layoutFittingCompressedSize.height),
