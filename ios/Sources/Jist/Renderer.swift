@@ -382,12 +382,6 @@ struct JistButtonView: View {
            let label = obj["label"]?.stringValue {
             let isDisabled = obj["disabled"]?.boolValue ?? false
 
-            let buttonSize = resolver.resolveNumber(type: "button", variant: node.variant, group: "text", property: "fontSize", fallback: 14)
-            let buttonWeight = JistThemeResolver.fontWeight(from: resolver.resolveNumber(type: "button", variant: node.variant, group: "text", property: "fontWeight", fallback: 500))
-            let buttonTracking = resolver.resolveNumber(type: "button", variant: node.variant, group: "text", property: "letterSpacing", fallback: 0)
-            let buttonLineHeight = resolver.resolve(type: "button", variant: node.variant, group: "text", property: "lineHeight")?.numberValue
-                .flatMap { $0 > 0 ? CGFloat($0) : nil } ?? 0
-
             Button {
                 onAction?(JistActionEvent(
                     component: "button",
@@ -396,15 +390,13 @@ struct JistButtonView: View {
                     meta: node.meta
                 ))
             } label: {
-                styledText(label, lineHeightMultiple: buttonLineHeight)
-                    .font(resolver.resolveFont(type: "button", variant: node.variant, group: "text", size: buttonSize, weight: buttonWeight))
-                    .fontWeight(buttonWeight)
-                    .tracking(buttonTracking)
+                Text(label)
                     .if(stretch) { $0.frame(maxWidth: .infinity) }
             }
             .buttonStyle(JistButtonStateStyle(
                 node: node, resolver: resolver,
-                isHovered: isHovered, isDisabled: isDisabled
+                isHovered: isHovered, isDisabled: isDisabled,
+                label: label, stretch: stretch
             ))
             .disabled(isDisabled)
             .onHover { isHovered = $0 }
@@ -423,6 +415,8 @@ private struct JistButtonStateStyle: ButtonStyle {
     let resolver: JistThemeResolver
     let isHovered: Bool
     let isDisabled: Bool
+    let label: String
+    let stretch: Bool
 
     func makeBody(configuration: Configuration) -> some View {
         let state: String? = {
@@ -437,7 +431,17 @@ private struct JistButtonStateStyle: ButtonStyle {
         let minW = resolver.resolveNumber(type: "button", variant: node.variant, property: "minWidth", fallback: 0)
         let minH = resolver.resolveNumber(type: "button", variant: node.variant, property: "minHeight", fallback: 0)
 
-        configuration.label
+        let buttonSize = resolver.resolveNumber(type: "button", variant: node.variant, group: "text", property: "fontSize", state: state, fallback: 14)
+        let buttonWeight = JistThemeResolver.fontWeight(from: resolver.resolveNumber(type: "button", variant: node.variant, group: "text", property: "fontWeight", state: state, fallback: 500))
+        let buttonTracking = resolver.resolveNumber(type: "button", variant: node.variant, group: "text", property: "letterSpacing", state: state, fallback: 0)
+        let buttonLineHeight = resolver.resolve(type: "button", variant: node.variant, group: "text", property: "lineHeight", state: state)?.numberValue
+            .flatMap { $0 > 0 ? CGFloat($0) : nil } ?? 0
+
+        styledText(label, lineHeightMultiple: buttonLineHeight)
+            .font(resolver.resolveFont(type: "button", variant: node.variant, group: "text", state: state, size: buttonSize, weight: buttonWeight))
+            .fontWeight(buttonWeight)
+            .tracking(buttonTracking)
+            .if(stretch) { $0.frame(maxWidth: .infinity) }
             .foregroundColor(resolver.resolveColor(type: "button", variant: node.variant, group: "text", property: "color", state: state, fallback: .white))
             .padding(EdgeInsets(
                 top:      resolver.resolveNumber(type: "button", variant: node.variant, group: "padding", property: "top", fallback: 8),
