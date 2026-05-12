@@ -564,10 +564,10 @@ private fun JistButtonView(
                     resolver.resolveFloat("button", node.variant, "text", "fontWeight", state = state, fallback = 500f)
                 ),
                 color = textColor,
-                fontFamily = LocalJistFontCache.current[resolver.resolve("button", node.variant, "text", "fontFamily")?.contentOrNull ?: ""],
-                letterSpacing = resolver.resolve("button", node.variant, "text", "letterSpacing")?.floatOrNull
+                fontFamily = LocalJistFontCache.current[resolver.resolve("button", node.variant, "text", "fontFamily", state = state)?.contentOrNull ?: ""],
+                letterSpacing = resolver.resolve("button", node.variant, "text", "letterSpacing", state = state)?.floatOrNull
                     ?.takeIf { it != 0f }?.sp ?: TextUnit.Unspecified,
-                lineHeight = resolver.resolve("button", node.variant, "text", "lineHeight")?.floatOrNull
+                lineHeight = resolver.resolve("button", node.variant, "text", "lineHeight", state = state)?.floatOrNull
                     ?.takeIf { it > 0f }?.let { TextUnit(it, TextUnitType.Em) } ?: TextUnit.Unspecified
             )
         )
