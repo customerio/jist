@@ -375,20 +375,12 @@ struct JistButtonView: View {
     let onAction: ((JistActionEvent) -> Void)?
 
     @Environment(\.jistStretch) private var stretch
+    @State private var isHovered = false
 
     var body: some View {
         if let obj = data[node.name]?.objectValue,
            let label = obj["label"]?.stringValue {
-            let radius = resolver.resolveNumber(type: "button", variant: node.variant, group: "border", property: "radius", fallback: 6)
-            let borderWidth = resolver.resolveNumber(type: "button", variant: node.variant, group: "border", property: "width", fallback: 0)
-            let minW = resolver.resolveNumber(type: "button", variant: node.variant, property: "minWidth", fallback: 0)
-            let minH = resolver.resolveNumber(type: "button", variant: node.variant, property: "minHeight", fallback: 0)
-
-            let buttonSize = resolver.resolveNumber(type: "button", variant: node.variant, group: "text", property: "fontSize", fallback: 14)
-            let buttonWeight = JistThemeResolver.fontWeight(from: resolver.resolveNumber(type: "button", variant: node.variant, group: "text", property: "fontWeight", fallback: 500))
-            let buttonTracking = resolver.resolveNumber(type: "button", variant: node.variant, group: "text", property: "letterSpacing", fallback: 0)
-            let buttonLineHeight = resolver.resolve(type: "button", variant: node.variant, group: "text", property: "lineHeight")?.numberValue
-                .flatMap { $0 > 0 ? CGFloat($0) : nil } ?? 0
+            let isDisabled = obj["disabled"]?.boolValue ?? false
 
             Button {
                 onAction?(JistActionEvent(
@@ -398,14 +390,59 @@ struct JistButtonView: View {
                     meta: node.meta
                 ))
             } label: {
-                styledText(label, lineHeightMultiple: buttonLineHeight)
-                    .font(resolver.resolveFont(type: "button", variant: node.variant, group: "text", size: buttonSize, weight: buttonWeight))
-                    .fontWeight(buttonWeight)
-                    .tracking(buttonTracking)
-                    .foregroundColor(resolver.resolveColor(type: "button", variant: node.variant, group: "text", property: "color", fallback: .white))
+                Text(label)
                     .if(stretch) { $0.frame(maxWidth: .infinity) }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(JistButtonStateStyle(
+                node: node, resolver: resolver,
+                isHovered: isHovered, isDisabled: isDisabled,
+                label: label, stretch: stretch
+            ))
+            .disabled(isDisabled)
+            .onHover { isHovered = $0 }
+            .padding(EdgeInsets(
+                top: resolver.resolveNumber(type: "button", variant: node.variant, group: "margin", property: "top", fallback: 0),
+                leading: resolver.resolveNumber(type: "button", variant: node.variant, group: "margin", property: "left", fallback: 0),
+                bottom: resolver.resolveNumber(type: "button", variant: node.variant, group: "margin", property: "bottom", fallback: 0),
+                trailing: resolver.resolveNumber(type: "button", variant: node.variant, group: "margin", property: "right", fallback: 0)
+            ))
+        }
+    }
+}
+
+private struct JistButtonStateStyle: ButtonStyle {
+    let node: JistButtonNode
+    let resolver: JistThemeResolver
+    let isHovered: Bool
+    let isDisabled: Bool
+    let label: String
+    let stretch: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        let state: String? = {
+            if isDisabled { return "disabled" }
+            if configuration.isPressed { return "active" }
+            if isHovered { return "hover" }
+            return nil
+        }()
+
+        let radius = resolver.resolveNumber(type: "button", variant: node.variant, group: "border", property: "radius", fallback: 6)
+        let borderWidth = resolver.resolveNumber(type: "button", variant: node.variant, group: "border", property: "width", fallback: 0)
+        let minW = resolver.resolveNumber(type: "button", variant: node.variant, property: "minWidth", fallback: 0)
+        let minH = resolver.resolveNumber(type: "button", variant: node.variant, property: "minHeight", fallback: 0)
+
+        let buttonSize = resolver.resolveNumber(type: "button", variant: node.variant, group: "text", property: "fontSize", state: state, fallback: 14)
+        let buttonWeight = JistThemeResolver.fontWeight(from: resolver.resolveNumber(type: "button", variant: node.variant, group: "text", property: "fontWeight", state: state, fallback: 500))
+        let buttonTracking = resolver.resolveNumber(type: "button", variant: node.variant, group: "text", property: "letterSpacing", state: state, fallback: 0)
+        let buttonLineHeight = resolver.resolve(type: "button", variant: node.variant, group: "text", property: "lineHeight", state: state)?.numberValue
+            .flatMap { $0 > 0 ? CGFloat($0) : nil } ?? 0
+
+        styledText(label, lineHeightMultiple: buttonLineHeight)
+            .font(resolver.resolveFont(type: "button", variant: node.variant, group: "text", state: state, size: buttonSize, weight: buttonWeight))
+            .fontWeight(buttonWeight)
+            .tracking(buttonTracking)
+            .if(stretch) { $0.frame(maxWidth: .infinity) }
+            .foregroundColor(resolver.resolveColor(type: "button", variant: node.variant, group: "text", property: "color", state: state, fallback: .white))
             .padding(EdgeInsets(
                 top:      resolver.resolveNumber(type: "button", variant: node.variant, group: "padding", property: "top", fallback: 8),
                 leading:  resolver.resolveNumber(type: "button", variant: node.variant, group: "padding", property: "left", fallback: 16),
@@ -417,29 +454,22 @@ struct JistButtonView: View {
                 RoundedRectangle(cornerRadius: radius)
                     .fill(resolver.resolveColor(
                         type: "button", variant: node.variant, group: "background", property: "color",
-                        fallback: Color(hex: "#4F46E5")!
+                        state: state, fallback: Color(hex: "#4F46E5")!
                     ))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: radius)
                     .stroke(
-                        resolver.resolveColor(type: "button", variant: node.variant, group: "border", property: "color", fallback: .clear),
+                        resolver.resolveColor(type: "button", variant: node.variant, group: "border", property: "color", state: state, fallback: .clear),
                         lineWidth: borderWidth
                     )
             )
             .shadow(
-                color: resolver.resolveColor(type: "button", variant: node.variant, group: "shadow", property: "color", fallback: .clear),
-                radius: resolver.resolveNumber(type: "button", variant: node.variant, group: "shadow", property: "blur", fallback: 0) / 2,
-                x: resolver.resolveNumber(type: "button", variant: node.variant, group: "shadow", property: "offsetX", fallback: 0),
-                y: resolver.resolveNumber(type: "button", variant: node.variant, group: "shadow", property: "offsetY", fallback: 0)
+                color: resolver.resolveColor(type: "button", variant: node.variant, group: "shadow", property: "color", state: state, fallback: .clear),
+                radius: resolver.resolveNumber(type: "button", variant: node.variant, group: "shadow", property: "blur", state: state, fallback: 0) / 2,
+                x: resolver.resolveNumber(type: "button", variant: node.variant, group: "shadow", property: "offsetX", state: state, fallback: 0),
+                y: resolver.resolveNumber(type: "button", variant: node.variant, group: "shadow", property: "offsetY", state: state, fallback: 0)
             )
-            .padding(EdgeInsets(
-                top: resolver.resolveNumber(type: "button", variant: node.variant, group: "margin", property: "top", fallback: 0),
-                leading: resolver.resolveNumber(type: "button", variant: node.variant, group: "margin", property: "left", fallback: 0),
-                bottom: resolver.resolveNumber(type: "button", variant: node.variant, group: "margin", property: "bottom", fallback: 0),
-                trailing: resolver.resolveNumber(type: "button", variant: node.variant, group: "margin", property: "right", fallback: 0)
-            ))
-        }
     }
 }
 

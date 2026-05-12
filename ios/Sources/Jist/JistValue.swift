@@ -24,6 +24,11 @@ public enum JistValue: Equatable, Sendable {
         return nil
     }
 
+    public var boolValue: Bool? {
+        if case .bool(let b) = self { return b }
+        return nil
+    }
+
     public var arrayValue: [JistValue]? {
         if case .array(let a) = self { return a }
         return nil

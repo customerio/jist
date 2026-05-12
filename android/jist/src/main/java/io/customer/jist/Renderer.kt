@@ -3,11 +3,15 @@ package io.customer.jist
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,19 +40,25 @@ import coil3.compose.AsyncImage
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.floatOrNull
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import androidx.compose.foundation.Image
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import java.time.format.FormatStyle
 
 private const val MAX_TEMPLATE_DEPTH = 10
 
 private val LocalJistTextAlign = compositionLocalOf { TextAlign.Start }
+
+val LocalJistImageProvider = staticCompositionLocalOf<((String) -> ImageBitmap?)?> { null }
 
 // Keyed by raw fontFamily string from the theme; value is the resolved FontFamily.
 // staticCompositionLocalOf is used because this map only changes when the theme or JistTheme
@@ -469,16 +479,28 @@ private fun JistButtonView(
 ) {
     val buttonData = data[node.name] as? JsonObject ?: return
     val label = (buttonData["label"] as? JsonPrimitive)?.contentOrNull ?: return
+    val isDisabled = (buttonData["disabled"] as? JsonPrimitive)?.booleanOrNull ?: false
 
-    val bgColor = resolver.resolveColor("button", node.variant, "background", "color", fallback = Color(0xFF4F46E5))
-    val textColor = resolver.resolveColor("button", node.variant, "text", "color", fallback = Color.White)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val isHovered by interactionSource.collectIsHoveredAsState()
+
+    val state: String? = when {
+        isDisabled -> "disabled"
+        isPressed -> "active"
+        isHovered -> "hover"
+        else -> null
+    }
+
+    val bgColor = resolver.resolveColor("button", node.variant, "background", "color", state = state, fallback = Color(0xFF4F46E5))
+    val textColor = resolver.resolveColor("button", node.variant, "text", "color", state = state, fallback = Color.White)
     val radius = resolver.resolveFloat("button", node.variant, "border", "radius", fallback = 6f)
     val borderWidth = resolver.resolveFloat("button", node.variant, "border", "width", fallback = 0f)
-    val borderColor = resolver.resolveColor("button", node.variant, "border", "color", fallback = Color.Transparent)
+    val borderColor = resolver.resolveColor("button", node.variant, "border", "color", state = state, fallback = Color.Transparent)
     val minW = resolver.resolveFloat("button", node.variant, "minWidth", fallback = 0f)
     val minH = resolver.resolveFloat("button", node.variant, "minHeight", fallback = 0f)
     val shadowBlur = resolver.resolveFloat("button", node.variant, "shadow", "blur", fallback = 0f)
-    val shadowColor = resolver.resolveColor("button", node.variant, "shadow", "color", fallback = Color.Transparent)
+    val shadowColor = resolver.resolveColor("button", node.variant, "shadow", "color", state = state, fallback = Color.Transparent)
     val shape = RoundedCornerShape(radius.dp)
 
     Box(
@@ -510,7 +532,13 @@ private fun JistButtonView(
                 if (borderWidth > 0) Modifier.border(borderWidth.dp, borderColor, shape)
                 else Modifier
             )
-            .clickable {
+            .hoverable(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = !isDisabled,
+                role = Role.Button
+            ) {
                 onAction?.invoke(
                     JistActionEvent(
                         component = "button",
@@ -526,21 +554,20 @@ private fun JistButtonView(
                 end = resolver.resolveFloat("button", node.variant, "padding", "right", fallback = 16f).dp,
                 bottom = resolver.resolveFloat("button", node.variant, "padding", "bottom", fallback = 8f).dp
             )
-            .semantics { role = Role.Button }
     ) {
         Text(
             text = label,
             softWrap = false,
             style = tightTextStyle(
-                fontSize = resolver.resolveFloat("button", node.variant, "text", "fontSize", fallback = 14f).sp,
+                fontSize = resolver.resolveFloat("button", node.variant, "text", "fontSize", state = state, fallback = 14f).sp,
                 fontWeight = JistThemeResolver.fontWeight(
-                    resolver.resolveFloat("button", node.variant, "text", "fontWeight", fallback = 500f)
+                    resolver.resolveFloat("button", node.variant, "text", "fontWeight", state = state, fallback = 500f)
                 ),
                 color = textColor,
-                fontFamily = LocalJistFontCache.current[resolver.resolve("button", node.variant, "text", "fontFamily")?.contentOrNull ?: ""],
-                letterSpacing = resolver.resolve("button", node.variant, "text", "letterSpacing")?.floatOrNull
+                fontFamily = LocalJistFontCache.current[resolver.resolve("button", node.variant, "text", "fontFamily", state = state)?.contentOrNull ?: ""],
+                letterSpacing = resolver.resolve("button", node.variant, "text", "letterSpacing", state = state)?.floatOrNull
                     ?.takeIf { it != 0f }?.sp ?: TextUnit.Unspecified,
-                lineHeight = resolver.resolve("button", node.variant, "text", "lineHeight")?.floatOrNull
+                lineHeight = resolver.resolve("button", node.variant, "text", "lineHeight", state = state)?.floatOrNull
                     ?.takeIf { it > 0f }?.let { TextUnit(it, TextUnitType.Em) } ?: TextUnit.Unspecified
             )
         )
@@ -648,10 +675,21 @@ private fun JistImageView(
     node.height?.let { imageMod = imageMod.height(it.dp) }
     imageMod = imageMod.clip(RoundedCornerShape(radius.dp))
 
-    AsyncImage(
-        model = url,
-        contentDescription = altText,
-        contentScale = contentScale,
-        modifier = imageMod
-    )
+    val imageProvider = LocalJistImageProvider.current
+    val bitmap = imageProvider?.invoke(url)
+    if (bitmap != null) {
+        Image(
+            painter = BitmapPainter(bitmap),
+            contentDescription = altText,
+            contentScale = contentScale,
+            modifier = imageMod
+        )
+    } else {
+        AsyncImage(
+            model = url,
+            contentDescription = altText,
+            contentScale = contentScale,
+            modifier = imageMod
+        )
+    }
 }
