@@ -46,14 +46,19 @@ import kotlinx.serialization.json.floatOrNull
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import androidx.compose.foundation.Image
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import java.time.format.FormatStyle
 
 private const val MAX_TEMPLATE_DEPTH = 10
 
 private val LocalJistTextAlign = compositionLocalOf { TextAlign.Start }
+
+val LocalJistImageProvider = staticCompositionLocalOf<((String) -> ImageBitmap?)?> { null }
 
 // Keyed by raw fontFamily string from the theme; value is the resolved FontFamily.
 // staticCompositionLocalOf is used because this map only changes when the theme or JistTheme
@@ -670,10 +675,21 @@ private fun JistImageView(
     node.height?.let { imageMod = imageMod.height(it.dp) }
     imageMod = imageMod.clip(RoundedCornerShape(radius.dp))
 
-    AsyncImage(
-        model = url,
-        contentDescription = altText,
-        contentScale = contentScale,
-        modifier = imageMod
-    )
+    val imageProvider = LocalJistImageProvider.current
+    val bitmap = imageProvider?.invoke(url)
+    if (bitmap != null) {
+        Image(
+            painter = BitmapPainter(bitmap),
+            contentDescription = altText,
+            contentScale = contentScale,
+            modifier = imageMod
+        )
+    } else {
+        AsyncImage(
+            model = url,
+            contentDescription = altText,
+            contentScale = contentScale,
+            modifier = imageMod
+        )
+    }
 }
