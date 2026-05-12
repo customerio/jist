@@ -24,6 +24,9 @@ android/**/build/
 android/**/.cxx/
 android/example/src/main/res/raw/*.json
 
+# Test artifacts
+web/test-results/
+
 # IDE
 .idea/
 *.swp
