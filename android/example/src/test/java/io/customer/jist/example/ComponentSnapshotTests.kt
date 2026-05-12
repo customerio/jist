@@ -61,9 +61,10 @@ class ComponentSnapshotTests {
     }
 
     private val sharedTestsDir: File by lazy {
-        val candidate = File(System.getProperty("user.dir")).resolve("../shared/tests")
+        val cwd = System.getProperty("user.dir")!!
+        val candidate = File(cwd).resolve("../shared/tests")
         if (candidate.isDirectory) candidate
-        else File(System.getProperty("user.dir")).resolve("../../shared/tests")
+        else File(cwd).resolve("../../shared/tests")
     }
 
     @Test
