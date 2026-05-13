@@ -4,7 +4,7 @@ import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useBuilderStore } from "@/store/builder-store";
 import { isContainer } from "@/lib/template-utils";
-import { ComponentIcon, TrashIcon, GripIcon } from "./Icons";
+import { ComponentIcon, TrashIcon, GripIcon, LinkIcon } from "./Icons";
 
 /* ── Drop zone between nodes ──────────────────────── */
 
@@ -33,13 +33,15 @@ function DropZone({ parentPath, index }: { parentPath: string; index: number }) 
 /* ── Type badge colors ────────────────────────────── */
 
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  layout:  { bg: "#dbeafe", text: "#1d4ed8" },
-  heading: { bg: "#e9d5ff", text: "#7c3aed" },
-  text:    { bg: "#d1fae5", text: "#059669" },
-  date:    { bg: "#ffedd5", text: "#c2410c" },
-  button:  { bg: "#e0e7ff", text: "#4338ca" },
-  image:   { bg: "#fce7f3", text: "#be185d" },
-  action:  { bg: "#fef3c7", text: "#b45309" },
+  layout:        { bg: "#dbeafe", text: "#1d4ed8" },
+  heading:       { bg: "#e9d5ff", text: "#7c3aed" },
+  text:          { bg: "#d1fae5", text: "#059669" },
+  date:          { bg: "#ffedd5", text: "#c2410c" },
+  button:        { bg: "#e0e7ff", text: "#4338ca" },
+  image:         { bg: "#fce7f3", text: "#be185d" },
+  action:        { bg: "#fef3c7", text: "#b45309" },
+  dynamicLayout: { bg: "#ccfbf1", text: "#0d9488" },
+  template:      { bg: "#f3e8ff", text: "#9333ea" },
 };
 
 const TYPE_ICONS: Record<string, string> = {
@@ -50,6 +52,8 @@ const TYPE_ICONS: Record<string, string> = {
   button: "square",
   image: "image",
   action: "pointer",
+  dynamicLayout: "list",
+  template: "link",
 };
 
 /* ── Single canvas node ───────────────────────────── */
@@ -64,8 +68,11 @@ export function CanvasNode({ node, path, depth = 0 }: CanvasNodeProps) {
   const { selectedNodePath, selectNode, removeNode } = useBuilderStore();
   const isSelected = selectedNodePath === path;
   const container = isContainer(node);
-  const children = (node.children as Record<string, unknown>[]) || [];
   const type = node.type as string;
+  const isDynamic = type === "dynamicLayout";
+  const children = isDynamic
+    ? (node.template ? [node.template as Record<string, unknown>] : [])
+    : ((node.children as Record<string, unknown>[]) || []);
 
   const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } =
     useDraggable({
@@ -79,7 +86,7 @@ export function CanvasNode({ node, path, depth = 0 }: CanvasNodeProps) {
     : undefined;
 
   const dirLabel =
-    type === "layout"
+    type === "layout" || type === "dynamicLayout"
       ? (node.direction as string) === "horizontal"
         ? "row"
         : "col"
@@ -137,6 +144,17 @@ export function CanvasNode({ node, path, depth = 0 }: CanvasNodeProps) {
               {children.length} child{children.length !== 1 ? "ren" : ""}
             </span>
           )}
+          {type === "template" && (
+            <span className="text-[10px] text-foreground/40 ml-auto font-medium flex items-center gap-1">
+              <LinkIcon className="w-2.5 h-2.5" />
+              ref
+            </span>
+          )}
+          {isDynamic && (
+            <span className="text-[10px] text-foreground/40 ml-auto font-medium">
+              repeater
+            </span>
+          )}
           {path && (
             <button
               onClick={(e) => {
@@ -153,7 +171,7 @@ export function CanvasNode({ node, path, depth = 0 }: CanvasNodeProps) {
         </div>
 
         {/* Children (for containers) */}
-        {container && (
+        {container && !isDynamic && (
           <div className="px-3 pb-2">
             <div className="pl-3 border-l-2 border-border">
               <DropZone parentPath={path} index={0} />
@@ -171,6 +189,23 @@ export function CanvasNode({ node, path, depth = 0 }: CanvasNodeProps) {
                 <div className="py-4 text-center text-xs text-muted border border-dashed border-border rounded-lg my-1">
                   Drag components here
                 </div>
+              )}
+            </div>
+          </div>
+        )}
+        {/* dynamicLayout template child */}
+        {isDynamic && (
+          <div className="px-3 pb-2">
+            <div className="pl-3 border-l-2 border-dashed border-teal-300">
+              <div className="text-[10px] text-muted font-medium py-1">template (repeated per item)</div>
+              {children.length > 0 ? (
+                <CanvasNode
+                  node={children[0]}
+                  path={path ? `${path}.0` : "0"}
+                  depth={depth + 1}
+                />
+              ) : (
+                <DropZone parentPath={path} index={0} />
               )}
             </div>
           </div>

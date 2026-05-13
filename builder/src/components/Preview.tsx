@@ -34,7 +34,7 @@ export function Preview() {
       data: unknown;
       theme: unknown;
       mode: string;
-      formatDate: (iso: string) => string;
+      formatDate: (iso: string, name: string) => string;
     };
 
     el.templates = registry;
@@ -42,7 +42,7 @@ export function Preview() {
     el.data = data;
     el.theme = theme;
     el.mode = colorMode;
-    el.formatDate = (iso: string) => {
+    el.formatDate = (iso: string, _name: string) => {
       try {
         return new Date(iso).toLocaleDateString("en-US", {
           month: "short",
