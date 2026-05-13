@@ -20,23 +20,31 @@ jobs:
       contents: write
       checks: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           token: ${{ secrets.SRE_GHACTIONS_TOKEN }}
 
       - name: Verify all checks passed on main
         run: |
           COMMIT=$(git rev-parse HEAD)
-          STATUS=$(gh api "repos/${{ github.repository }}/commits/$COMMIT/status" --jq '.state')
-          if [ "$STATUS" != "success" ]; then
-            echo "Commit $COMMIT has combined status: $STATUS. Aborting release."
-            gh api "repos/${{ github.repository }}/commits/$COMMIT/status" --jq '.statuses[] | select(.state != "success") | "\(.state) \(.context)"'
+          FAILED=$(gh api "repos/${{ github.repository }}/commits/$COMMIT/check-runs" \
+            --paginate --jq '[.check_runs[] | select(.conclusion != "success" and .conclusion != "skipped" and .conclusion != "neutral")] | length')
+          TOTAL=$(gh api "repos/${{ github.repository }}/commits/$COMMIT/check-runs" \
+            --paginate --jq '.total_count')
+          if [ "$TOTAL" -eq 0 ]; then
+            echo "No check runs found for $COMMIT. Aborting release."
+            exit 1
+          fi
+          if [ "$FAILED" -ne 0 ]; then
+            echo "Some checks did not pass on $COMMIT. Aborting release."
+            gh api "repos/${{ github.repository }}/commits/$COMMIT/check-runs" \
+              --paginate --jq '.check_runs[] | select(.conclusion != "success" and .conclusion != "skipped" and .conclusion != "neutral") | "\(.conclusion) \(.name)"'
             exit 1
           fi
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
 
