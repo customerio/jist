@@ -33,3 +33,6 @@ web/test-results/
 *~
 .vscode/
 .DS_Store
+
+# Local Claude Code config
+.claude/settings.local.json
