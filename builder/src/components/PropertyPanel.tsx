@@ -451,6 +451,90 @@ function ActionProps({
   );
 }
 
+function DynamicLayoutProps({
+  node,
+  onUpdate,
+}: {
+  node: Record<string, unknown>;
+  onUpdate: (u: Record<string, unknown>) => void;
+}) {
+  return (
+    <>
+      <TextInput
+        label="Name (data array key)"
+        value={(node.name as string) || ""}
+        onChange={(v) => onUpdate({ name: v })}
+        placeholder="items"
+      />
+      <SelectInput
+        label="Direction"
+        value={(node.direction as string) || "vertical"}
+        onChange={(v) => onUpdate({ direction: v })}
+        options={[
+          { value: "vertical", label: "Vertical" },
+          { value: "horizontal", label: "Horizontal" },
+        ]}
+      />
+      <NumberInput
+        label="Gap"
+        value={node.gap as number | undefined}
+        onChange={(v) => onUpdate({ gap: v })}
+        min={0}
+        placeholder="0"
+      />
+      <SelectInput
+        label="Align"
+        value={(node.align as string) || ""}
+        onChange={(v) => onUpdate(v ? { align: v } : { align: undefined })}
+        options={[
+          { value: "", label: "Default" },
+          { value: "stretch", label: "Stretch" },
+          { value: "start", label: "Start" },
+          { value: "end", label: "End" },
+          { value: "center", label: "Center" },
+          { value: "baseline", label: "Baseline" },
+        ]}
+      />
+      <SelectInput
+        label="Justify"
+        value={(node.justify as string) || ""}
+        onChange={(v) => onUpdate(v ? { justify: v } : { justify: undefined })}
+        options={[
+          { value: "", label: "Default" },
+          { value: "start", label: "Start" },
+          { value: "end", label: "End" },
+          { value: "center", label: "Center" },
+          { value: "space-between", label: "Space Between" },
+          { value: "space-around", label: "Space Around" },
+          { value: "space-evenly", label: "Space Evenly" },
+        ]}
+      />
+      <SpacingInput
+        label="Margin (T R B L)"
+        value={node.margin as Record<string, number> | undefined}
+        onChange={(v) => onUpdate({ margin: v })}
+      />
+    </>
+  );
+}
+
+function TemplateRefProps({
+  node,
+  onUpdate,
+}: {
+  node: Record<string, unknown>;
+  onUpdate: (u: Record<string, unknown>) => void;
+}) {
+  return (
+    <TextInput
+      label="Template name (registry key)"
+      value={(node.name as string) || ""}
+      onChange={(v) => onUpdate({ name: v })}
+      placeholder="e.g. notification-item"
+    />
+  );
+}
+
 /* ── Property panel ──────────────────────────────── */
 
 const EDITORS: Record<
@@ -467,6 +551,8 @@ const EDITORS: Record<
   button: ButtonProps,
   image: ImageProps,
   action: ActionProps,
+  dynamicLayout: DynamicLayoutProps,
+  template: TemplateRefProps,
 };
 
 export function PropertyPanel() {

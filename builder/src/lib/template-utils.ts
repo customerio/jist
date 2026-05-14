@@ -1,15 +1,23 @@
 /* Template tree manipulation utilities.
    Path format: "" = root, "0" = root.children[0], "0.2" = root.children[0].children[2] */
 
-type AnyNode = Record<string, unknown> & { children?: AnyNode[] };
+type AnyNode = Record<string, unknown> & { children?: AnyNode[]; template?: AnyNode };
+
+function getChildren(node: AnyNode): AnyNode[] {
+  if (node.type === "dynamicLayout") {
+    return node.template ? [node.template] : [];
+  }
+  return node.children || [];
+}
 
 export function getNodeByPath(root: AnyNode, path: string): AnyNode | null {
   if (!path) return root;
   const indices = path.split(".").map(Number);
   let node: AnyNode | undefined = root;
   for (const i of indices) {
-    if (!node?.children || i < 0 || i >= node.children.length) return null;
-    node = node.children[i];
+    const kids = getChildren(node!);
+    if (i < 0 || i >= kids.length) return null;
+    node = kids[i];
   }
   return node ?? null;
 }
@@ -24,6 +32,16 @@ export function getChildIndex(path: string): number {
   return Number(parts[parts.length - 1]);
 }
 
+function setChildAt(parent: AnyNode, idx: number, child: AnyNode): void {
+  if (parent.type === "dynamicLayout") {
+    parent.template = child;
+  } else {
+    if (parent.children && idx < parent.children.length) {
+      parent.children[idx] = child;
+    }
+  }
+}
+
 export function updateNodeByPath(
   root: AnyNode,
   path: string,
@@ -36,8 +54,10 @@ export function updateNodeByPath(
   const parentPath = getParentPath(path);
   const idx = getChildIndex(path);
   const parent = parentPath ? getNodeByPath(newRoot, parentPath) : newRoot;
-  if (!parent?.children || idx >= parent.children.length) return newRoot;
-  parent.children[idx] = replacement as AnyNode;
+  if (!parent) return newRoot;
+  const kids = getChildren(parent);
+  if (idx >= kids.length) return newRoot;
+  setChildAt(parent, idx, replacement as AnyNode);
   return newRoot;
 }
 
@@ -50,12 +70,15 @@ export function insertNode(
   const newRoot = structuredClone(root);
   const parent = parentPath ? getNodeByPath(newRoot, parentPath) : newRoot;
   if (!parent) throw new Error(`Parent path "${parentPath}" not found`);
-  if (!parent.children) {
-    if (!isContainer(parent)) throw new Error(`Node at "${parentPath}" is not a container`);
-    parent.children = [];
+  if (!isContainer(parent)) throw new Error(`Node at "${parentPath}" is not a container`);
+
+  if (parent.type === "dynamicLayout") {
+    parent.template = structuredClone(node);
+  } else {
+    if (!parent.children) parent.children = [];
+    const clampedIndex = Math.max(0, Math.min(index, parent.children.length));
+    parent.children.splice(clampedIndex, 0, structuredClone(node));
   }
-  const clampedIndex = Math.max(0, Math.min(index, parent.children.length));
-  parent.children.splice(clampedIndex, 0, structuredClone(node));
   return newRoot;
 }
 
@@ -65,8 +88,14 @@ export function removeNodeByPath(root: AnyNode, path: string): AnyNode {
   const parentPath = getParentPath(path);
   const idx = getChildIndex(path);
   const parent = parentPath ? getNodeByPath(newRoot, parentPath) : newRoot;
-  if (!parent?.children || idx >= parent.children.length) return newRoot;
-  parent.children.splice(idx, 1);
+  if (!parent) return newRoot;
+
+  if (parent.type === "dynamicLayout") {
+    parent.template = { type: "layout", direction: "vertical", children: [] } as unknown as AnyNode;
+  } else {
+    if (!parent.children || idx >= parent.children.length) return newRoot;
+    parent.children.splice(idx, 1);
+  }
   return newRoot;
 }
 
@@ -136,7 +165,7 @@ export function moveNode(
 }
 
 export function isContainer(node: AnyNode): boolean {
-  return node.type === "layout" || node.type === "action";
+  return node.type === "layout" || node.type === "action" || node.type === "dynamicLayout";
 }
 
 export function isDescendant(ancestorPath: string, targetPath: string): boolean {
