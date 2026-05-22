@@ -25,7 +25,7 @@
     "./dist/jist.css"
   ],
   "scripts": {
-    "build": "tsc && cp src/jist.css dist/jist.css && cp ../LICENSE dist/LICENSE",
+    "build": "node build.cjs",
     "test": "playwright test",
     "prepublishOnly": "npm run build"
   },
