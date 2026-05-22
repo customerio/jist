@@ -97,6 +97,7 @@ class JistTemplateElement extends HTMLElement {
   static #injectBaseStyles(): void {
     if (JistTemplateElement.#baseStyleInjected) return;
     JistTemplateElement.#baseStyleInjected = true;
+    if (document.querySelector("style[data-jist-base]")) return;
     const style = document.createElement("style");
     style.setAttribute("data-jist-base", "");
     style.textContent = JIST_BASE_CSS;

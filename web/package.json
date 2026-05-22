@@ -26,6 +26,7 @@
   ],
   "scripts": {
     "build": "node build.cjs",
+    "dev": "node dev.cjs",
     "test": "playwright test",
     "prepublishOnly": "npm run build"
   },
