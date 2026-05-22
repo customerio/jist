@@ -4,6 +4,7 @@
    ═══════════════════════════════════════════ */
 
 import JistRenderer from "./jist-renderer.js";
+import JIST_BASE_CSS from "./jist-css.js";
 import type {
   JistTemplate,
   JistData,
@@ -87,10 +88,21 @@ interface ThemeObject {
 class JistTemplateElement extends HTMLElement {
   static observedAttributes = ["template", "data", "theme", "mode"];
 
+  static #baseStyleInjected = false;
   static #sharedStyle: HTMLStyleElement | null = null;
   static #nextScopeId = 0;
   // unscoped CSS → { scopeId, refCount }
   static #scopes = new Map<string, { id: number; refs: number }>();
+
+  static #injectBaseStyles(): void {
+    if (JistTemplateElement.#baseStyleInjected) return;
+    JistTemplateElement.#baseStyleInjected = true;
+    if (document.querySelector("style[data-jist-base]")) return;
+    const style = document.createElement("style");
+    style.setAttribute("data-jist-base", "");
+    style.textContent = JIST_BASE_CSS;
+    document.head.appendChild(style);
+  }
 
   #scopeKey: string | null = null;
   #template: string | null = null;
@@ -173,6 +185,7 @@ class JistTemplateElement extends HTMLElement {
   // ── Lifecycle ─────────────────────────────
 
   connectedCallback(): void {
+    JistTemplateElement.#injectBaseStyles();
     this.#mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     this.#mediaHandler = () => {
       if (this.#mode === "auto") {
