@@ -106,9 +106,10 @@ export const selectActiveTemplate = (s: BuilderState): TemplateRoot | null => {
   return s.registry[s.activeTemplateName]?.[0] ?? null;
 };
 
+const EMPTY_DATA: Record<string, unknown> = {};
 export const selectActiveData = (s: BuilderState): Record<string, unknown> => {
-  if (!s.activeTemplateName) return {};
-  return s.dataMap[s.activeTemplateName] ?? {};
+  if (!s.activeTemplateName) return EMPTY_DATA;
+  return s.dataMap[s.activeTemplateName] ?? EMPTY_DATA;
 };
 
 // ── Helpers ────────────────────────────────────
