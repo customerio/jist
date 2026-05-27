@@ -23,7 +23,7 @@ for (const [key, value] of Object.entries(sampleRegistry)) {
 const sampleData = sampleDataRaw as Record<string, Record<string, unknown>>;
 const { $schema: _ths, ...sampleTheme } = sampleThemeRaw as Record<string, unknown>;
 
-type ViewMode = "editor" | "preview" | "code";
+type ViewMode = "editor" | "code";
 type ColorMode = "light" | "dark";
 type ActiveTab = "template" | "data" | "theme";
 

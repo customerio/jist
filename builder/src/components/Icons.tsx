@@ -65,6 +65,9 @@ export function DownloadIcon({ className }: { className?: string }) {
 export function UploadIcon({ className }: { className?: string }) {
   return <svg {...s} className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
 }
+export function RefreshIcon({ className }: { className?: string }) {
+  return <svg {...s} className={className}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>;
+}
 
 const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
   grid: GridIcon,
