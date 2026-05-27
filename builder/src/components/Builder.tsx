@@ -24,7 +24,6 @@ import {
   MoonIcon,
   PlusIcon,
   PenIcon,
-  EyeIcon,
   CodeIcon,
   ChevronDownIcon,
   ComponentIcon,
@@ -35,6 +34,8 @@ const LEFT_MIN = 180;
 const LEFT_MAX = 400;
 const RIGHT_MIN = 240;
 const RIGHT_MAX = 520;
+const PREVIEW_MIN = 250;
+const PREVIEW_MAX = 600;
 
 /* ── Drag overlay shown while dragging ────────────── */
 
@@ -376,45 +377,62 @@ export function Builder() {
   );
 }
 
-const VIEW_TABS: { id: "editor" | "preview" | "code"; label: string; Icon: React.FC<{ className?: string }> }[] = [
+const VIEW_TABS: { id: "editor" | "code"; label: string; Icon: React.FC<{ className?: string }> }[] = [
   { id: "editor", label: "Editor", Icon: PenIcon },
-  { id: "preview", label: "Preview", Icon: EyeIcon },
   { id: "code", label: "Code", Icon: CodeIcon },
 ];
 
 function CenterPanel() {
   const { viewMode, setViewMode } = useBuilderStore();
+  const [previewWidth, setPreviewWidth] = useState(360);
+
+  const handlePreviewResize = useCallback((delta: number) => {
+    setPreviewWidth((w) => Math.min(PREVIEW_MAX, Math.max(PREVIEW_MIN, w + delta)));
+  }, []);
 
   return (
     <div className="h-full flex flex-col">
-      {/* View mode tabs */}
-      <div className="flex items-center px-3 py-1.5 border-b border-border bg-surface shrink-0">
-        <div className="flex items-center bg-background rounded-lg border border-border p-0.5">
-          {VIEW_TABS.map(({ id, label, Icon }) => (
-            <button
-              key={id}
-              onClick={() => setViewMode(id)}
-              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                viewMode === id
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-muted hover:text-foreground"
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Template tabs */}
       <TemplateTabs />
 
-      {/* Content */}
-      <div className="flex-1 min-h-0">
-        {viewMode === "editor" && <TemplateCanvas />}
-        {viewMode === "preview" && <Preview />}
-        {viewMode === "code" && <CodeView />}
+      {/* Split: Editor/Code + Preview */}
+      <div className="flex-1 min-h-0 flex">
+        {/* Left: Editor / Code */}
+        <div className="flex-1 min-w-0 flex flex-col">
+          {/* View mode tabs */}
+          <div className="flex items-center px-3 py-1.5 border-b border-border bg-surface shrink-0">
+            <div className="flex items-center bg-background rounded-lg border border-border p-0.5">
+              {VIEW_TABS.map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setViewMode(id)}
+                  className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    viewMode === id
+                      ? "bg-primary text-white shadow-sm"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-h-0">
+            {viewMode === "editor" && <TemplateCanvas />}
+            {viewMode === "code" && <CodeView />}
+          </div>
+        </div>
+
+        {/* Resize handle between editor and preview */}
+        <ResizeHandle side="right" onResize={handlePreviewResize} />
+
+        {/* Right: Preview (always visible) */}
+        <aside className="shrink-0 flex flex-col" style={{ width: previewWidth }}>
+          <Preview />
+        </aside>
       </div>
     </div>
   );
