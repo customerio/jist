@@ -75,6 +75,10 @@ final class JistSnapshotTests: XCTestCase {
         assertTemplateSnapshot("stats", mode: .light)
     }
 
+    func testCardLight() {
+        assertTemplateSnapshot("card", mode: .light)
+    }
+
     func testAnnouncementLight() {
         assertTemplateSnapshot("announcement", mode: .light)
     }
@@ -111,6 +115,10 @@ final class JistSnapshotTests: XCTestCase {
 
     func testStatsDark() {
         assertTemplateSnapshot("stats", mode: .dark)
+    }
+
+    func testCardDark() {
+        assertTemplateSnapshot("card", mode: .dark)
     }
 
     func testAnnouncementDark() {
@@ -178,6 +186,9 @@ final class JistSnapshotTests: XCTestCase {
         }
         if result["avatar"] != nil {
             result["avatar"] = .string(Self.avatarPlaceholder.absoluteString)
+        }
+        if result["icon"] != nil {
+            result["icon"] = .string(Self.avatarPlaceholder.absoluteString)
         }
         return result
     }

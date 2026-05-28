@@ -11,7 +11,7 @@ struct JistImageProviderKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
-    fileprivate var jistStretch: Bool {
+    var jistStretch: Bool {
         get { self[JistStretchKey.self] }
         set { self[JistStretchKey.self] = newValue }
     }
@@ -180,12 +180,19 @@ struct JistLayoutView: View {
             view.frame(maxWidth: .infinity, alignment: frameAlignment)
                 .multilineTextAlignment(textAlignment)
                 .environment(\.jistStretch, true)
+        } else if needsFlex && child.isLayout {
+            view.frame(minWidth: 0, maxWidth: .infinity)
+                .environment(\.jistStretch, false)
         } else if isStretch {
             view.frame(maxHeight: .infinity)
                 .environment(\.jistStretch, false)
         } else {
             view.environment(\.jistStretch, false)
         }
+    }
+
+    private var needsFlex: Bool {
+        !isVertical && (justify == "start")
     }
 
     private var frameAlignment: Alignment {
@@ -217,19 +224,21 @@ struct JistActionView: View {
     var templateDepth: Int = 0
 
     var body: some View {
-        Button {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(0..<node.children.count, id: \.self) { i in
+                JistNodeView(node: node.children[i], data: data, resolver: resolver, formatDate: formatDate, onAction: onAction, templates: templates, templateDepth: templateDepth)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
             onAction?(JistActionEvent(
                 component: "action",
                 name: node.name,
                 data: data[node.name],
                 meta: node.meta
             ))
-        } label: {
-            ForEach(0..<node.children.count, id: \.self) { i in
-                JistNodeView(node: node.children[i], data: data, resolver: resolver, formatDate: formatDate, onAction: onAction, templates: templates, templateDepth: templateDepth)
-            }
         }
-        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
     }
