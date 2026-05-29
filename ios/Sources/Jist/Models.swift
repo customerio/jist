@@ -62,6 +62,11 @@ public indirect enum JistNode: Codable, Sendable {
         case .unknown:              break
         }
     }
+
+    var isLayout: Bool {
+        if case .layout = self { return true }
+        return false
+    }
 }
 
 // MARK: - Spacing

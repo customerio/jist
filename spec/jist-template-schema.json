@@ -12,13 +12,22 @@
       "description": "Spec version this template targets (e.g. \"1\", \"2\"). The renderer silently skips templates with unsupported versions."
     },
     "root": {
-      "$ref": "#/definitions/layoutNode",
-      "description": "Root of the template tree. Must be a layout node."
+      "$ref": "#/definitions/rootNode",
+      "description": "Root of the template tree. Must be a container node (layout, action, or dynamicLayout)."
     }
   },
   "additionalProperties": false,
 
   "definitions": {
+    "rootNode": {
+      "description": "A container node that can serve as the template root. Only container types (layout, action, dynamicLayout) are allowed at the root level.",
+      "oneOf": [
+        { "$ref": "#/definitions/layoutNode" },
+        { "$ref": "#/definitions/actionNode" },
+        { "$ref": "#/definitions/dynamicLayoutNode" }
+      ]
+    },
+
     "spacingObject": {
       "type": "object",
       "description": "Spacing values for margin. All values are unitless numbers (px on web, pt on iOS, dp on Android).",

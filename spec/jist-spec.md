@@ -47,7 +47,7 @@ A template is a JSON object with two required fields:
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `version` | string | Yes | Spec version this template targets |
-| `root` | component node | Yes | Root of the template tree (must be a layout node) |
+| `root` | container node | Yes | Root of the template tree (must be a container: `layout`, `action`, or `dynamicLayout`) |
 
 ---
 

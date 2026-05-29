@@ -62,6 +62,7 @@ mount("t-hero", "hero", "hero");
 mount("t-inbox", "inbox", "inbox");
 mount("t-profile", "profile", "profile");
 mount("t-stats", "stats", "stats");
+mount("t-card", "card", "card");
 mount("t-announcement", "announcement", "announcement");
 
 // ── Dark Mode Toggle ────────────────────────

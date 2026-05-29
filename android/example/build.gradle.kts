@@ -54,6 +54,4 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
-    testImplementation("io.coil-kt.coil3:coil:3.0.4")
-    testImplementation("io.coil-kt.coil3:coil-test:3.0.4")
 }

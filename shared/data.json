@@ -85,6 +85,12 @@
     "timestamp": "2026-04-01T00:00:00Z",
     "cta": { "label": "View report", "url": "/reports/weekly" }
   },
+  "card": {
+    "title": "Design review ready",
+    "body": "The latest mockups are ready for your feedback. Take a look when you get a chance.",
+    "icon": "https://placehold.co/96x96/c7d2fe/4338ca.png?text=DR",
+    "action": { "url": "/reviews/42" }
+  },
   "announcement": {
     "title": "Jist 2.0 is here",
     "subtitle": "A major update to the cross-platform template renderer with new components and improved performance.",

@@ -5,30 +5,29 @@ import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
-import coil3.SingletonImageLoader
-import coil3.ImageLoader
-import coil3.asImage
-import coil3.test.FakeImageLoaderEngine
 import com.android.ide.common.rendering.api.SessionParams
 import io.customer.jist.JistJson
 import io.customer.jist.JistMode
 import io.customer.jist.JistTemplate
 import io.customer.jist.JistTheme
 import io.customer.jist.JistView
+import io.customer.jist.LocalJistImageProvider
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 
 class SnapshotTests {
 
@@ -38,25 +37,13 @@ class SnapshotTests {
         renderingMode = SessionParams.RenderingMode.SHRINK
     )
 
-    @Before
-    fun setUp() {
-        // Set up a fake Coil image loader that returns a solid-color placeholder
-        // for any image request — no network needed, fully deterministic.
-        val placeholder = Bitmap.createBitmap(200, 200, Bitmap.Config.ARGB_8888).apply {
-            eraseColor(AndroidColor.parseColor("#e2e8f0"))
-        }.asImage()
-
-        val engine = FakeImageLoaderEngine.Builder()
-            .default(placeholder)
-            .build()
-
-        @OptIn(coil3.annotation.DelicateCoilApi::class)
-        SingletonImageLoader.setUnsafe(
-            ImageLoader.Builder(paparazzi.context)
-                .components { add(engine) }
-                .build()
-        )
+    private val placeholderBitmap: ImageBitmap by lazy {
+        Bitmap.createBitmap(200, 200, Bitmap.Config.ARGB_8888).apply {
+            eraseColor(AndroidColor.parseColor("#c7d2fe"))
+        }.asImageBitmap()
     }
+
+    private val imageProvider: (String) -> ImageBitmap? = { _ -> placeholderBitmap }
 
     private fun loadResource(name: String): String =
         javaClass.classLoader!!.getResourceAsStream(name)!!.bufferedReader().readText()
@@ -85,7 +72,7 @@ class SnapshotTests {
 
     private val allTemplates: Map<String, List<JistTemplate>> by lazy {
         val obj = JistJson.parseToJsonElement(loadResource("templates.json")).jsonObject
-        listOf("basic", "image", "cta", "action", "hero", "inbox", "profile", "stats", "announcement").associateWith { key ->
+        listOf("basic", "image", "cta", "action", "hero", "inbox", "profile", "stats", "card", "announcement").associateWith { key ->
             obj[key]!!.jsonArray.map { JistJson.decodeFromJsonElement(JistTemplate.serializer(), it) }
         }
     }
@@ -101,16 +88,18 @@ class SnapshotTests {
     private fun snapshot(templateKey: String, mode: JistMode) {
         val bg = if (mode == JistMode.Light) Color.White else Color.Black
         paparazzi.snapshot {
-            JistTheme(fonts = fonts) {
-                Box(modifier = Modifier.background(bg).padding(16.dp)) {
-                    JistView(
-                        name = templateKey,
-                        templates = allTemplates,
-                        data = allData[templateKey]!!.jsonObject,
-                        theme = theme,
-                        mode = mode,
-                        formatDate = { _, _ -> "Apr 1, 2026" }
-                    )
+            CompositionLocalProvider(LocalJistImageProvider provides imageProvider) {
+                JistTheme(fonts = fonts) {
+                    Box(modifier = Modifier.background(bg).padding(16.dp)) {
+                        JistView(
+                            name = templateKey,
+                            templates = allTemplates,
+                            data = allData[templateKey]!!.jsonObject,
+                            theme = theme,
+                            mode = mode,
+                            formatDate = { _, _ -> "Apr 1, 2026" }
+                        )
+                    }
                 }
             }
         }
@@ -155,6 +144,11 @@ class SnapshotTests {
 
     @Test fun stats_light() = snapshot("stats", JistMode.Light)
     @Test fun stats_dark() = snapshot("stats", JistMode.Dark)
+
+    // -- card --
+
+    @Test fun card_light() = snapshot("card", JistMode.Light)
+    @Test fun card_dark() = snapshot("card", JistMode.Dark)
 
     // -- announcement --
 
