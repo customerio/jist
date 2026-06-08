@@ -1,4 +1,4 @@
-name: Publish to NPM
+name: Publish Package
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
 permissions:
   id-token: write
   contents: read
+  packages: write
 
 jobs:
   publish:
@@ -31,5 +32,10 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Publish
+      - name: Publish to npm
         run: npm publish --access public
+
+      - name: Publish to GitHub Packages
+        run: npm publish --access public --registry https://npm.pkg.github.com
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
