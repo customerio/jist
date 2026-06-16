@@ -10,7 +10,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        minSdk = 24
+        minSdk = 21
     }
 
     compileOptions {
@@ -21,6 +21,13 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+    }
+
+    lint {
+        // The Android floor is minSdk 21. Calling an API above the floor without a
+        // version guard (or desugaring) must fail the build, not just warn.
+        abortOnError = true
+        error += "NewApi"
     }
 }
 
