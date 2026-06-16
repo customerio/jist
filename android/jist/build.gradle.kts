@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("io.customer.android.publish-module")
 }
 
 android {
@@ -40,4 +41,12 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.4")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+}
+
+// Maven Central coordinates: io.customer.android:jist (group comes from the shared plugin).
+customerIoPublish {
+    artifactId = "jist"
+    artifactName = "Customer.io Jist (Android)"
+    description = "Customer.io Jist — native Android renderer for JSON-template inbox messages."
+    url = "https://github.com/customerio/jist"
 }
