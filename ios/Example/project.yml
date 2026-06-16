@@ -48,4 +48,5 @@ targets:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
 packages:
   Jist:
-    path: ../
+    # Package.swift now lives at the repo root (one level above ios/).
+    path: ../../
