@@ -8,8 +8,10 @@ Pod::Spec.new do |spec|
 
   # The pod is published from the jist monorepo. CocoaPods clones the whole repo at the tag, but
   # `source_files` scopes compilation to the iOS sources only — consumer binaries reference iOS
-  # code only. The monorepo uses platform-prefixed tags (e.g. ios-v0.1.0).
-  spec.source       = { :git => 'https://github.com/customerio/jist.git', :tag => "ios-v#{spec.version}" }
+  # code only. The tag is plain semver (e.g. v0.1.0): SwiftPM only resolves tags that parse as
+  # semver (optionally a leading `v`), so iOS/SPM owns the semver tag namespace. Android publishes
+  # to Maven (version in the artifact coordinates, not the git tag) and is unaffected.
+  spec.source       = { :git => 'https://github.com/customerio/jist.git', :tag => "v#{spec.version}" }
 
   spec.swift_version = '6.0'
   spec.cocoapods_version = '>= 1.11.0'
