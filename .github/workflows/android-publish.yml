@@ -1,13 +1,20 @@
 name: Publish Android (manual)
 
-# Manual / dry-run only for now — no automated release trigger yet (tracked as a follow-up).
+# Manual only for now — no automated release trigger yet (tracked as a follow-up).
 # Publishes io.customer.android:jist to the Sonatype Central Portal staging repository.
+#
+# By default the run only *closes* (validates) the staging repository so it can be eyeballed on
+# central.sonatype.com before going live. Tick `release` to also release it to Maven Central.
 on:
   workflow_dispatch:
     inputs:
       version:
         description: "Version to publish (e.g. 0.1.0-alpha01)"
         required: true
+      release:
+        description: "Release to Maven Central (unticked = close + validate staging only)"
+        type: boolean
+        default: false
 
 jobs:
   publish:
@@ -16,21 +23,25 @@ jobs:
       run:
         working-directory: android
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Android
         uses: customerio/mobile-ci-tools/github-actions/android/setup-android/v1@main
 
       - name: Publish to Sonatype (staging)
+        # Secret names match customerio-android / mobile-ci-tools; mapped here to the env vars the
+        # shared io.customer.android.publish-* plugin reads.
         env:
           MODULE_VERSION: ${{ inputs.version }}
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          OSSRH_USERNAME: ${{ secrets.GRADLE_PUBLISH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.GRADLE_PUBLISH_PASSWORD }}
+          SIGNING_KEY_ID: ${{ secrets.GRADLE_SIGNING_KEYID }}
+          SIGNING_PASSWORD: ${{ secrets.GRADLE_SIGNING_PASSPHRASE }}
+          SIGNING_KEY: ${{ secrets.GRADLE_SIGNING_PRIVATE_KEY }}
           SONATYPE_STAGING_PROFILE_ID: ${{ secrets.SONATYPE_STAGING_PROFILE_ID }}
-          SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+          # closeAndRelease pushes to Maven Central; close-only just validates the staging repo.
+          CLOSE_TASK: ${{ inputs.release && 'closeAndReleaseSonatypeStagingRepository' || 'closeSonatypeStagingRepository' }}
         run: >-
           ./gradlew :jist:publishReleasePublicationToSonatypeRepository
           --max-workers 1
-          closeAndReleaseSonatypeStagingRepository
+          "$CLOSE_TASK"
