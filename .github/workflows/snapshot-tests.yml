@@ -62,7 +62,8 @@ jobs:
     runs-on: ${{ vars.MACOS_RUNNER || 'macos-26' }}
     defaults:
       run:
-        working-directory: ios
+        # Package.swift lives at the repo root, so xcodebuild resolves the Jist scheme from there.
+        working-directory: .
     steps:
       - uses: actions/checkout@v5
 
@@ -153,9 +154,9 @@ jobs:
 
       # ── iOS ──
       - name: Record iOS baselines
-        working-directory: ios
+        # Package.swift lives at the repo root; run xcodebuild from there.
         run: |
-          sed -i '' 's|// isRecording = true|isRecording = true|' Tests/JistTests/SnapshotTests.swift Tests/JistTests/ComponentSnapshotTests.swift
+          sed -i '' 's|// isRecording = true|isRecording = true|' ios/Tests/JistTests/SnapshotTests.swift ios/Tests/JistTests/ComponentSnapshotTests.swift
           xcodebuild test \
             -scheme Jist \
             -destination 'platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }}' \
