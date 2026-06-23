@@ -11,3 +11,9 @@ plugins {
     id("io.customer.android.publish-root") version "0.1.0"
     id("io.customer.android.publish-module") version "0.1.0" apply false
 }
+
+// The gradle-nexus plugin auto-detects the Sonatype staging profile from the root project's
+// group, so it must be set to our namespace here (publish-module only sets the module's group).
+// Without this, `closeSonatypeStagingRepository` fails with "Failed to find staging profile for
+// package group:" (empty).
+group = "io.customer.android"
