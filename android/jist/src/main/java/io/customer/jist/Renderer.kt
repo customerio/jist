@@ -43,16 +43,16 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.floatOrNull
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import androidx.compose.foundation.Image
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
-import java.time.format.FormatStyle
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 
 private const val MAX_TEMPLATE_DEPTH = 10
 
@@ -457,14 +457,58 @@ private fun JistDateView(
     )
 }
 
-private fun defaultFormatDate(iso: String): String {
-    return try {
-        val instant = Instant.parse(iso)
-        val date = instant.atZone(ZoneId.systemDefault()).toLocalDate()
-        date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
-    } catch (_: Exception) {
-        iso
+// SimpleDateFormat / DateFormat are relatively expensive to construct and are NOT thread-safe, so
+// we cache them per-thread and reuse them instead of allocating on every render. Date nodes are
+// formatted during composition (potentially many at once, e.g. while scrolling a list), so per-call
+// allocation would cause UI jank. `ThreadLocal.withInitial` is intentionally NOT used (it's a Java 8
+// default method that would re-introduce the core-library desugaring requirement); the classic
+// `initialValue()` override works on all API levels.
+
+/** Per-thread, reusable ISO-8601 parsers (UTC, with and without fractional seconds). */
+private val isoParserCache = object : ThreadLocal<List<SimpleDateFormat>>() {
+    override fun initialValue(): List<SimpleDateFormat> =
+        listOf("yyyy-MM-dd'T'HH:mm:ss.SSS", "yyyy-MM-dd'T'HH:mm:ss").map { pattern ->
+            SimpleDateFormat(pattern, Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+                isLenient = false
+            }
+        }
+}
+
+/** Per-thread, reusable localized output formatter, paired with the locale it was built for. */
+private val mediumDateFormatCache = object : ThreadLocal<Pair<Locale, DateFormat>>() {
+    override fun initialValue(): Pair<Locale, DateFormat> {
+        val locale = Locale.getDefault()
+        return locale to DateFormat.getDateInstance(DateFormat.MEDIUM, locale)
     }
+}
+
+/** Cached localized medium-date formatter, rebuilt only when the default locale changes. */
+private fun mediumDateFormat(): DateFormat {
+    val current = Locale.getDefault()
+    val cached = mediumDateFormatCache.get()
+    if (cached != null && cached.first == current) return cached.second
+    val rebuilt = current to DateFormat.getDateInstance(DateFormat.MEDIUM, current)
+    mediumDateFormatCache.set(rebuilt)
+    return rebuilt.second
+}
+
+private fun defaultFormatDate(iso: String): String {
+    // Parse the ISO-8601 instant (UTC, optional fractional seconds) without the newer date/time
+    // APIs so consumers don't need Android core-library desugaring. Normalize the trailing "Z" away
+    // and parse as UTC, then format as a localized medium-style date in the default locale, reusing
+    // the cached (per-thread) formatters above to avoid per-render allocation.
+    val parsers = isoParserCache.get() ?: return iso
+    val normalized = iso.trim().removeSuffix("Z")
+    for (parser in parsers) {
+        try {
+            val date = parser.parse(normalized) ?: continue
+            return mediumDateFormat().format(date)
+        } catch (_: Exception) {
+            // Try the next pattern.
+        }
+    }
+    return iso
 }
 
 // MARK: - Button
