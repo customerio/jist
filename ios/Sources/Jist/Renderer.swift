@@ -240,20 +240,9 @@ struct JistActionView: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(JistActionPressStyle())
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
-    }
-}
-
-/// Minimal ButtonStyle giving the whole action row a native-feeling press
-/// treatment (subtle opacity dip while pressed) without tinting or restyling
-/// the underlying content. The `action` node is not themed, so no theme
-/// tokens are read here.
-private struct JistActionPressStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .opacity(configuration.isPressed ? 0.6 : 1.0)
     }
 }
 
