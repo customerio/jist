@@ -224,23 +224,36 @@ struct JistActionView: View {
     var templateDepth: Int = 0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(0..<node.children.count, id: \.self) { i in
-                JistNodeView(node: node.children[i], data: data, resolver: resolver, formatDate: formatDate, onAction: onAction, templates: templates, templateDepth: templateDepth)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
+        Button {
             onAction?(JistActionEvent(
                 component: "action",
                 name: node.name,
                 data: data[node.name],
                 meta: node.meta
             ))
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(0..<node.children.count, id: \.self) { i in
+                    JistNodeView(node: node.children[i], data: data, resolver: resolver, formatDate: formatDate, onAction: onAction, templates: templates, templateDepth: templateDepth)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(JistActionPressStyle())
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// Minimal ButtonStyle giving the whole action row a native-feeling press
+/// treatment (subtle opacity dip while pressed) without tinting or restyling
+/// the underlying content. The `action` node is not themed, so no theme
+/// tokens are read here.
+private struct JistActionPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.6 : 1.0)
     }
 }
 
