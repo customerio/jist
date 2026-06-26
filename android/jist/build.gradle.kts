@@ -15,7 +15,6 @@ android {
     }
 
     compileOptions {
-        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -26,14 +25,13 @@ android {
 
     lint {
         // The Android floor is minSdk 21. Calling an API above the floor without a
-        // version guard (or desugaring) must fail the build, not just warn.
+        // version guard must fail the build, not just warn.
         abortOnError = true
         error += "NewApi"
     }
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")

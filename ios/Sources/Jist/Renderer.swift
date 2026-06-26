@@ -224,21 +224,23 @@ struct JistActionView: View {
     var templateDepth: Int = 0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(0..<node.children.count, id: \.self) { i in
-                JistNodeView(node: node.children[i], data: data, resolver: resolver, formatDate: formatDate, onAction: onAction, templates: templates, templateDepth: templateDepth)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
+        Button {
             onAction?(JistActionEvent(
                 component: "action",
                 name: node.name,
                 data: data[node.name],
                 meta: node.meta
             ))
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(0..<node.children.count, id: \.self) { i in
+                    JistNodeView(node: node.children[i], data: data, resolver: resolver, formatDate: formatDate, onAction: onAction, templates: templates, templateDepth: templateDepth)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
     }
