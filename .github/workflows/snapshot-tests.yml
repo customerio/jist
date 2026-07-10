@@ -24,6 +24,11 @@ env:
   UBUNTU_RUNNER: ubuntu-24.04
   NODE_VERSION: "20"
   JAVA_VERSION: "17"
+  # Must be an Xcode version whose iOS simulator runtime ships on the runner
+  # image — in practice the image's default Xcode. Older Xcodes remain
+  # installed but resolve zero simulator destinations once their runtime
+  # rotates out of the image.
+  XCODE_VERSION: "26.5"
   IOS_SIMULATOR: iPhone 17 Pro
 
 jobs:
@@ -69,13 +74,16 @@ jobs:
 
       - name: Select Xcode
         run: |
-          XCODE_PATH=$(ls -d /Applications/Xcode_26.4* 2>/dev/null | head -1)
+          XCODE_PATH=$(ls -d "/Applications/Xcode_${XCODE_VERSION}"* 2>/dev/null | head -1)
           if [ -z "$XCODE_PATH" ]; then
-            echo "Xcode 26.4 not found, using default"
+            echo "Xcode ${XCODE_VERSION} not found, using default"
           else
             sudo xcode-select -s "$XCODE_PATH"
           fi
           xcodebuild -version
+
+      - name: List available simulators
+        run: xcrun simctl list devices available
 
       - run: >-
           xcodebuild test
@@ -129,9 +137,9 @@ jobs:
       # ── Xcode ──
       - name: Select Xcode
         run: |
-          XCODE_PATH=$(ls -d /Applications/Xcode_26.4* 2>/dev/null | head -1)
+          XCODE_PATH=$(ls -d "/Applications/Xcode_${XCODE_VERSION}"* 2>/dev/null | head -1)
           if [ -z "$XCODE_PATH" ]; then
-            echo "Xcode 26.4 not found, using default"
+            echo "Xcode ${XCODE_VERSION} not found, using default"
           else
             sudo xcode-select -s "$XCODE_PATH"
           fi
