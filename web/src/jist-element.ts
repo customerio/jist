@@ -17,6 +17,18 @@ const SUPPORTED_VERSION = "1";
 
 const TAG_NAME = "jist-template";
 
+// Public properties replayed through #upgradeProperty when the element
+// connects after a late upgrade.
+const UPGRADABLE_PROPS = [
+  "template",
+  "data",
+  "theme",
+  "mode",
+  "formatDate",
+  "onAction",
+  "templates",
+] as const;
+
 // Theme properties that are unitless numbers (not CSS lengths)
 const UNITLESS_KEYS = new Set([
   "fontWeight",
@@ -197,8 +209,22 @@ class JistTemplateElement extends HTMLElement {
     };
     this.#mediaQuery.addEventListener("change", this.#mediaHandler);
 
+    for (const prop of UPGRADABLE_PROPS) this.#upgradeProperty(prop);
+
     this.#applyTheme();
     this.#render();
+  }
+
+  // A property assigned before upgrade sits as an own data property that
+  // shadows the class accessor, so the setter (and rendering) never runs.
+  // connectedCallback replays each one: capture, delete, re-assign through
+  // the real setter — the "lazy properties" upgrade pattern.
+  #upgradeProperty(prop: string): void {
+    if (!Object.prototype.hasOwnProperty.call(this, prop)) return;
+    const self = this as unknown as Record<string, unknown>;
+    const value = self[prop];
+    delete self[prop];
+    self[prop] = value;
   }
 
   disconnectedCallback(): void {

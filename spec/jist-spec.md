@@ -873,6 +873,8 @@ import { register } from "@customerio/jist";
 register();
 ```
 
+Properties assigned to a `<jist-template>` element before registration are replayed through its setters when the element upgrades, so configuring elements early — declaratively or from script — is safe regardless of when `register()` runs.
+
 ```html
 <jist-template
   template="inbox"

@@ -69,3 +69,22 @@ test("elements parsed before register() upgrade once it runs", async ({ page }) 
   });
   expect(upgraded).toBe(true);
 });
+
+test("properties assigned before register() are replayed on upgrade", async ({ page }) => {
+  await gotoHarness(page);
+
+  const rendered = await page.evaluate(() => {
+    const el = document.createElement("jist-template");
+    // Own data properties for now — they shadow the class accessors and
+    // must be replayed through the real setters when the element upgrades
+    el.templates = {
+      greeting: [{ version: "1", root: { type: "text", name: "message" } }],
+    };
+    el.template = "greeting";
+    el.data = { message: "Configured before upgrade" };
+    document.body.appendChild(el);
+    window.jistRegister();
+    return el.textContent;
+  });
+  expect(rendered).toContain("Configured before upgrade");
+});
