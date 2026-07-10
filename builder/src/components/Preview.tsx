@@ -164,6 +164,11 @@ export function Preview() {
       script.type = "module";
       script.setAttribute("data-jist-element", "");
       script.textContent = 'import { register } from "/jist/jist-element.js"; register();';
+      script.onerror = () => {
+        console.error(
+          "[jist builder] Failed to load /jist/jist-element.js — build the web package first (cd web && npm run build)."
+        );
+      };
       document.head.appendChild(script);
     }
 

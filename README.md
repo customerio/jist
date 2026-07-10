@@ -221,6 +221,15 @@ Dark mode is handled via sparse overrides under `modes.dark` — only the values
 
 Set `fontFamily` in any theme text group using the human-readable family name or a CSS-style fallback stack. Each platform resolves it natively — see [`spec/fonts.md`](spec/fonts.md) for bundling instructions and weight variant conventions.
 
+## Content Security Policy (web)
+
+What a page's CSP needs depends on how the element reaches it:
+
+- **Scripts** — Jist loads no scripts at runtime and contains no `eval`/`new Function`, so it works without `'unsafe-eval'`. When it's bundled into a host application or SDK, the host bundle's existing `script-src` allowance covers it — there is no separate Jist script for CSP to account for. Only when self-hosting `jist-element.js` as its own file does its origin need a `script-src` entry, and the quick start's inline `<script type="module">` snippet then needs an inline-script allowance (nonce or hash) — bundled apps should use a regular `import` instead.
+- **Styles** — Jist injects two `<style>` elements into `document.head` (base styles and generated theme-variant rules), which requires `'unsafe-inline'` in `style-src`. A nonce isn't currently supported, and hashes aren't practical because variant CSS is generated from theme data at runtime. Per-element theme values are applied through the CSSOM (`element.style`), which CSP doesn't restrict.
+- **Images** — `image` components create `<img>` elements from URLs in your data, so those origins must be allowed by `img-src`.
+- **Network** — Jist makes no network requests of its own; `connect-src` is unaffected. Fonts referenced by `fontFamily` resolve against whatever the host page loads, so any `font-src` needs belong to the host's own font loading.
+
 ## Project structure
 
 ```

@@ -536,10 +536,18 @@ class JistTemplateElement extends HTMLElement {
 // <jist-template> by calling register(). First registration wins — if the
 // tag is already defined (an older copy, a duplicate bundle, or a second
 // SDK instance on the page) this is a no-op instead of throwing
-// NotSupportedError.
+// NotSupportedError, and a warning is logged when the tag is owned by a
+// different constructor so version skew stays diagnosable.
 function register(): void {
-  if (!customElements.get(TAG_NAME)) {
+  const existing = customElements.get(TAG_NAME);
+  if (!existing) {
     customElements.define(TAG_NAME, JistTemplateElement);
+    return;
+  }
+  if (existing !== JistTemplateElement) {
+    console.warn(
+      "[jist] <jist-template> is already registered by another copy or version of the library; keeping the first registration."
+    );
   }
 }
 

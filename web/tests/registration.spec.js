@@ -49,6 +49,7 @@ test("register() yields when the tag is already defined", async ({ page }) => {
   await gotoHarness(page);
 
   // Another copy of the library (or an older version) claimed the tag first
+  const warningPromise = page.waitForEvent("console", (msg) => msg.type() === "warning");
   const firstRegistrationWins = await page.evaluate(() => {
     class Placeholder extends HTMLElement {}
     customElements.define("jist-template", Placeholder);
@@ -56,6 +57,9 @@ test("register() yields when the tag is already defined", async ({ page }) => {
     return customElements.get("jist-template") === Placeholder;
   });
   expect(firstRegistrationWins).toBe(true);
+
+  const warning = await warningPromise;
+  expect(warning.text()).toContain("already registered");
 });
 
 test("elements parsed before register() upgrade once it runs", async ({ page }) => {
