@@ -866,6 +866,15 @@ Each component has accessibility requirements that all platform implementations 
 
 **Custom Element:**
 
+The module does not define the element on import — call the exported `register()` helper once (a no-op if `<jist-template>` is already defined, e.g. by another copy of the library on the page):
+
+```js
+import { register } from "@customerio/jist";
+register();
+```
+
+Properties assigned to a `<jist-template>` element before registration are replayed through its setters when the element upgrades, so configuring elements early — declaratively or from script — is safe regardless of when `register()` runs.
+
 ```html
 <jist-template
   template="inbox"

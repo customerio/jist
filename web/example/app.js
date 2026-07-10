@@ -1,4 +1,6 @@
-import "../dist/jist-element.js";
+import { register } from "../dist/jist-element.js";
+
+register();
 
 // ── Load Shared Fixtures ────────────────────
 

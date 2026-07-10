@@ -29,7 +29,6 @@ export function Preview() {
   const data = useBuilderStore(selectActiveData);
   const containerRef = useRef<HTMLDivElement>(null);
   const elementRef = useRef<HTMLElement | null>(null);
-  const scriptLoaded = useRef(false);
   const [fonts, setFonts] = useState<CustomFont[]>([]);
   const [fontsOpen, setFontsOpen] = useState(false);
   const [fontName, setFontName] = useState("");
@@ -155,25 +154,27 @@ export function Preview() {
       document.head.appendChild(link);
     }
 
-    if (customElements.get("jist-template")) {
-      scriptLoaded.current = true;
-    }
-
-    if (scriptLoaded.current) {
-      setupElement();
-      return;
-    }
-
-    if (!document.querySelector('script[src="/jist/jist-element.js"]')) {
+    // The element module has no import side effects — an inline module
+    // script imports it and calls register() (a no-op if already defined).
+    if (
+      !customElements.get("jist-template") &&
+      !document.querySelector("script[data-jist-element]")
+    ) {
       const script = document.createElement("script");
       script.type = "module";
-      script.src = "/jist/jist-element.js";
-      script.onload = () => {
-        scriptLoaded.current = true;
-        requestAnimationFrame(() => setupElement());
+      script.setAttribute("data-jist-element", "");
+      script.textContent = 'import { register } from "/jist/jist-element.js"; register();';
+      script.onerror = () => {
+        console.error(
+          "[jist builder] Failed to load /jist/jist-element.js — build the web package first (cd web && npm run build)."
+        );
       };
       document.head.appendChild(script);
     }
+
+    customElements.whenDefined("jist-template").then(() => {
+      requestAnimationFrame(() => setupElement());
+    });
   }, [setupElement]);
 
   return (

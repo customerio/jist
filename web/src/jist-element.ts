@@ -15,6 +15,20 @@ import type {
 
 const SUPPORTED_VERSION = "1";
 
+const TAG_NAME = "jist-template";
+
+// Public properties replayed through #upgradeProperty when the element
+// connects after a late upgrade.
+const UPGRADABLE_PROPS = [
+  "template",
+  "data",
+  "theme",
+  "mode",
+  "formatDate",
+  "onAction",
+  "templates",
+] as const;
+
 // Theme properties that are unitless numbers (not CSS lengths)
 const UNITLESS_KEYS = new Set([
   "fontWeight",
@@ -195,8 +209,22 @@ class JistTemplateElement extends HTMLElement {
     };
     this.#mediaQuery.addEventListener("change", this.#mediaHandler);
 
+    for (const prop of UPGRADABLE_PROPS) this.#upgradeProperty(prop);
+
     this.#applyTheme();
     this.#render();
+  }
+
+  // A property assigned before upgrade sits as an own data property that
+  // shadows the class accessor, so the setter (and rendering) never runs.
+  // connectedCallback replays each one: capture, delete, re-assign through
+  // the real setter — the "lazy properties" upgrade pattern.
+  #upgradeProperty(prop: string): void {
+    if (!Object.prototype.hasOwnProperty.call(this, prop)) return;
+    const self = this as unknown as Record<string, unknown>;
+    const value = self[prop];
+    delete self[prop];
+    self[prop] = value;
   }
 
   disconnectedCallback(): void {
@@ -502,10 +530,29 @@ class JistTemplateElement extends HTMLElement {
   }
 }
 
-customElements.define("jist-template", JistTemplateElement);
+// ── Registration ──────────────────────────
+
+// Importing this module has no side effects: hosts opt in to defining
+// <jist-template> by calling register(). First registration wins — if the
+// tag is already defined (an older copy, a duplicate bundle, or a second
+// SDK instance on the page) this is a no-op instead of throwing
+// NotSupportedError, and a warning is logged when the tag is owned by a
+// different constructor so version skew stays diagnosable.
+function register(): void {
+  const existing = customElements.get(TAG_NAME);
+  if (!existing) {
+    customElements.define(TAG_NAME, JistTemplateElement);
+    return;
+  }
+  if (existing !== JistTemplateElement) {
+    console.warn(
+      "[jist] <jist-template> is already registered by another copy or version of the library; keeping the first registration."
+    );
+  }
+}
 
 export default JistTemplateElement;
-export { JistRenderer };
+export { JistRenderer, register };
 export type {
   JistTemplate,
   JistData,
