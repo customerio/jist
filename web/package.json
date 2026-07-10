@@ -1,6 +1,6 @@
 {
   "name": "@customerio/jist",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "Cross-platform JSON template renderer — web custom element. Renders Jist template trees into native DOM.",
   "type": "module",
   "files": [
@@ -21,7 +21,6 @@
     "./jist.css": "./dist/jist.css"
   },
   "sideEffects": [
-    "./dist/jist-element.js",
     "./dist/jist.css"
   ],
   "scripts": {

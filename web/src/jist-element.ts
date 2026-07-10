@@ -15,6 +15,8 @@ import type {
 
 const SUPPORTED_VERSION = "1";
 
+const TAG_NAME = "jist-template";
+
 // Theme properties that are unitless numbers (not CSS lengths)
 const UNITLESS_KEYS = new Set([
   "fontWeight",
@@ -502,10 +504,21 @@ class JistTemplateElement extends HTMLElement {
   }
 }
 
-customElements.define("jist-template", JistTemplateElement);
+// ── Registration ──────────────────────────
+
+// Importing this module has no side effects: hosts opt in to defining
+// <jist-template> by calling register(). First registration wins — if the
+// tag is already defined (an older copy, a duplicate bundle, or a second
+// SDK instance on the page) this is a no-op instead of throwing
+// NotSupportedError.
+function register(): void {
+  if (!customElements.get(TAG_NAME)) {
+    customElements.define(TAG_NAME, JistTemplateElement);
+  }
+}
 
 export default JistTemplateElement;
-export { JistRenderer };
+export { JistRenderer, register };
 export type {
   JistTemplate,
   JistData,

@@ -41,6 +41,9 @@
   <div class="card">
     <jist-template id="target"></jist-template>
   </div>
-  <script type="module" src="../dist/jist-element.js"></script>
+  <script type="module">
+    import { register } from "../dist/jist-element.js";
+    register();
+  </script>
 </body>
 </html>

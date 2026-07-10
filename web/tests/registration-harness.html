@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Jist Registration Test Harness</title>
+</head>
+<body>
+  <!-- Imports the element module without registering it, so tests control
+       exactly when (and whether) registration happens. -->
+  <script type="module">
+    import JistTemplateElement, { register } from "../dist/jist-element.js";
+    window.JistTemplateElement = JistTemplateElement;
+    window.jistRegister = register;
+  </script>
+</body>
+</html>

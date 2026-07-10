@@ -120,7 +120,10 @@ This renders identically on all three platforms. The theme adapts to light/dark 
 ### Web
 
 ```html
-<script type="module" src="jist-element.js"></script>
+<script type="module">
+  import { register } from "./jist-element.js";
+  register(); // defines <jist-template> — no-op if already defined
+</script>
 
 <jist-template
   template="inbox"
