@@ -11,6 +11,7 @@ import type {
   JistOnAction,
   JistActionEvent,
 } from "./jist-renderer.js";
+import init, { parse_template } from "./wasm/jist_core.js";
 
 const SUPPORTED_VERSION = "1";
 
@@ -103,7 +104,15 @@ class JistTemplateElement extends HTMLElement {
       if (!Array.isArray(value)) continue;
       const versions = value;
       const match = versions.find((t: JistTemplate) => t.version === SUPPORTED_VERSION);
-      if (match) resolved[name] = match;
+      if (!match) continue;
+      try {
+        // Parse + normalize the template through the shared Rust core (WASM):
+        // unknown-node handling, the image-width union, and forward-compat all
+        // live in jist-core, not in hand-written TypeScript.
+        resolved[name] = parse_template(JSON.stringify(match));
+      } catch {
+        // Invalid template — skip (matches the prior lenient behavior).
+      }
     }
     this.#templates = resolved;
     this.#render();
@@ -248,6 +257,11 @@ class JistTemplateElement extends HTMLElement {
     if (dom) this.appendChild(dom);
   }
 }
+
+// Initialize the Rust core (WASM) before registering the element, so the
+// synchronous render path can call parse_template(). Module evaluation suspends
+// here until the wasm is ready; the element only becomes defined afterward.
+await init();
 
 customElements.define("jist-template", JistTemplateElement);
 

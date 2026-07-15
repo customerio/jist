@@ -3,98 +3,38 @@
    Converts JSON template trees into DOM nodes
    ═══════════════════════════════════════════ */
 
-// ── Template Types ─────────────────────────
+// ── Template Model Types ───────────────────
+// Single source of truth: core/jist-core/src/models.rs (Rust). These types are
+// generated from it by tsify at wasm-build time and re-exported here, so the
+// web renderer no longer hand-maintains its own copy of the node model.
 
-export interface JistSpacing {
-  top?: number;
-  right?: number;
-  bottom?: number;
-  left?: number;
-}
+import type {
+  JistTemplate,
+  JistNode,
+  JistLayoutNode,
+  JistActionNode,
+  JistHeadingNode,
+  JistTextNode,
+  JistDateNode,
+  JistButtonNode,
+  JistImageNode,
+  JistDynamicLayoutNode,
+  JistTemplateNode,
+} from "./wasm/jist_core.js";
 
-export interface JistLayoutNode {
-  type: "layout";
-  direction: "vertical" | "horizontal";
-  gap?: number;
-  align?: string;
-  justify?: string;
-  margin?: JistSpacing;
-  children: JistNode[];
-}
-
-export interface JistActionNode {
-  type: "action";
-  name: string;
-  meta?: Record<string, unknown>;
-  children: JistNode[];
-}
-
-export interface JistHeadingNode {
-  type: "heading";
-  name?: string;
-  variant?: "h2" | "h3" | "h4";
-}
-
-export interface JistTextNode {
-  type: "text";
-  name?: string;
-  variant?: string;
-}
-
-export interface JistDateNode {
-  type: "date";
-  name?: string;
-  variant?: string;
-}
-
-export interface JistButtonNode {
-  type: "button";
-  name: string;
-  variant?: string;
-  meta?: Record<string, unknown>;
-}
-
-export interface JistImageNode {
-  type: "image";
-  name: string;
-  variant?: string;
-  width?: number | "fill";
-  height?: number;
-  objectFit?: "contain" | "cover" | "fill";
-  borderRadius?: number;
-}
-
-export interface JistDynamicLayoutNode {
-  type: "dynamicLayout";
-  name: string;
-  direction?: "vertical" | "horizontal";
-  gap?: number;
-  align?: string;
-  justify?: string;
-  margin?: JistSpacing;
-  template: JistNode;
-}
-
-export interface JistTemplateNode {
-  type: "template";
-  name: string;
-}
-
-export type JistNode =
-  | JistLayoutNode
-  | JistActionNode
-  | JistHeadingNode
-  | JistTextNode
-  | JistDateNode
-  | JistButtonNode
-  | JistImageNode
-  | JistDynamicLayoutNode
-  | JistTemplateNode;
-
-export interface JistTemplate {
-  version: string;
-  root: JistNode;
-}
+export type {
+  JistTemplate,
+  JistNode,
+  JistLayoutNode,
+  JistActionNode,
+  JistHeadingNode,
+  JistTextNode,
+  JistDateNode,
+  JistButtonNode,
+  JistImageNode,
+  JistDynamicLayoutNode,
+  JistTemplateNode,
+};
 
 // ── Data Types ─────────────────────────────
 
@@ -191,7 +131,7 @@ export default class JistRenderer {
       case "heading":
         return this.#buildHeading(node, data);
       case "text":
-        return this.#buildText("p", node, data);
+        return this.#buildText("p", "text", node, data);
       case "date":
         return this.#buildDate(node, data);
       case "button":
@@ -286,20 +226,21 @@ export default class JistRenderer {
 
   #buildHeading(node: JistHeadingNode, data: JistData): HTMLElement {
     const variant = node.variant || "h3";
-    return this.#buildText(variant, node, data, variant);
+    return this.#buildText(variant, "heading", node, data, variant);
   }
 
   // ── Text (heading, body) ──────────────────
 
   #buildText(
     tag: string,
+    componentType: string,
     node: JistHeadingNode | JistTextNode,
     data: JistData,
     variant?: string
   ): HTMLElement {
-    const name = node.name || node.type;
+    const name = node.name || componentType;
     const el = document.createElement(tag);
-    this.#applyClasses(el, node.type, name, variant || node.variant);
+    this.#applyClasses(el, componentType, name, variant || node.variant);
     el.textContent = (data[name] as string) || "";
     return el;
   }
