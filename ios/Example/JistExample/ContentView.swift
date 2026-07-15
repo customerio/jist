@@ -102,12 +102,10 @@ struct ContentView: View {
         guard currentActivity == nil,
               let template = templates["liveActivity"]?.first(where: { $0.version == "1" }) else { return }
 
-        let encoder = JSONEncoder()
-        guard let templateJSON = try? String(data: encoder.encode(template), encoding: .utf8),
-              let themeJSON = try? String(data: encoder.encode(theme), encoding: .utf8) else { return }
-
-        let data = dataForStep(deliverySteps[0])
-        guard let dataJSON = try? String(data: encoder.encode(data), encoding: .utf8) else { return }
+        // Serialization goes through jist-core (Rust) — the inverse of parsing.
+        let templateJSON = templateToJson(template: template)
+        let themeJSON = dataToJson(data: theme)
+        let dataJSON = dataToJson(data: dataForStep(deliverySteps[0]))
 
         let attributes = JistActivityAttributes(templateJSON: templateJSON, themeJSON: themeJSON)
         let state = JistActivityAttributes.ContentState(dataJSON: dataJSON)
@@ -126,7 +124,7 @@ struct ContentView: View {
                     if Task.isCancelled { return }
 
                     let stepData = dataForStep(deliverySteps[i])
-                    guard let json = try? String(data: JSONEncoder().encode(stepData), encoding: .utf8) else { continue }
+                    let json = dataToJson(data: stepData)
                     let newState = JistActivityAttributes.ContentState(dataJSON: json)
                     await activity.update(ActivityContent(state: newState, staleDate: nil))
 

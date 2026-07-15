@@ -2479,6 +2479,17 @@ public func jistVersion() -> String {
 }
 
 /**
+ * Serialize a data/theme dictionary back to JSON. Inverse of [`parse_data_json`].
+ */
+public func dataToJson(data: [String: JistValue]) -> String {
+    return try! FfiConverterString.lift(try! rustCall {
+        uniffi_jist_core_fn_func_data_to_json(
+            FfiConverterDictionaryStringTypeJistValue.lower(data), $0
+        )
+    })
+}
+
+/**
  * See [`font_weight_bucket`].
  */
 public func fontWeightBucketFfi(value: Double) -> UInt16 {
@@ -2524,6 +2535,18 @@ public func parseTemplateJson(json: String) throws -> JistTemplate {
     })
 }
 
+/**
+ * Serialize a template back to canonical JSON (e.g. for Live Activity
+ * attributes, persistence, or transport). Inverse of [`parse_template_json`].
+ */
+public func templateToJson(template: JistTemplate) -> String {
+    return try! FfiConverterString.lift(try! rustCall {
+        uniffi_jist_core_fn_func_template_to_json(
+            FfiConverterTypeJistTemplate.lower(template), $0
+        )
+    })
+}
+
 private enum InitializationResult {
     case ok
     case contractVersionMismatch
@@ -2543,6 +2566,9 @@ nonisolated(unsafe) private var initializationResult: InitializationResult = {
     if uniffi_jist_core_checksum_func_jist_version() != 45013 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_jist_core_checksum_func_data_to_json() != 47164 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_jist_core_checksum_func_font_weight_bucket_ffi() != 25504 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -2556,6 +2582,9 @@ nonisolated(unsafe) private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_jist_core_checksum_func_parse_template_json() != 7850 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_jist_core_checksum_func_template_to_json() != 6863 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_jist_core_checksum_method_themeresolver_resolve() != 64770 {

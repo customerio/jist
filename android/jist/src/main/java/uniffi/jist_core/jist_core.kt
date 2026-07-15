@@ -846,6 +846,11 @@ internal interface UniffiLib : Library {
 
     fun uniffi_jist_core_fn_func_jist_version(uniffi_out_err: UniffiRustCallStatus): RustBuffer.ByValue
 
+    fun uniffi_jist_core_fn_func_data_to_json(
+        `data`: RustBuffer.ByValue,
+        uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+
     fun uniffi_jist_core_fn_func_font_weight_bucket_ffi(
         `value`: Double,
         uniffi_out_err: UniffiRustCallStatus,
@@ -868,6 +873,11 @@ internal interface UniffiLib : Library {
 
     fun uniffi_jist_core_fn_func_parse_template_json(
         `json`: RustBuffer.ByValue,
+        uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+
+    fun uniffi_jist_core_fn_func_template_to_json(
+        `template`: RustBuffer.ByValue,
         uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
 
@@ -1089,6 +1099,8 @@ internal interface UniffiLib : Library {
 
     fun uniffi_jist_core_checksum_func_jist_version(): Short
 
+    fun uniffi_jist_core_checksum_func_data_to_json(): Short
+
     fun uniffi_jist_core_checksum_func_font_weight_bucket_ffi(): Short
 
     fun uniffi_jist_core_checksum_func_parse_data_json(): Short
@@ -1098,6 +1110,8 @@ internal interface UniffiLib : Library {
     fun uniffi_jist_core_checksum_func_parse_registry_json(): Short
 
     fun uniffi_jist_core_checksum_func_parse_template_json(): Short
+
+    fun uniffi_jist_core_checksum_func_template_to_json(): Short
 
     fun uniffi_jist_core_checksum_method_themeresolver_resolve(): Short
 
@@ -1131,6 +1145,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_jist_core_checksum_func_jist_version() != 45013.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_jist_core_checksum_func_data_to_json() != 47164.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_jist_core_checksum_func_font_weight_bucket_ffi() != 25504.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1144,6 +1161,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_jist_core_checksum_func_parse_template_json() != 7850.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_jist_core_checksum_func_template_to_json() != 6863.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_jist_core_checksum_method_themeresolver_resolve() != 64770.toShort()) {
@@ -3461,6 +3481,16 @@ fun `jistVersion`(): kotlin.String =
     )
 
 /**
+ * Serialize a data/theme dictionary back to JSON. Inverse of [`parse_data_json`].
+ */
+fun `dataToJson`(`data`: Map<kotlin.String, JistValue>): kotlin.String =
+    FfiConverterString.lift(
+        uniffiRustCall { _status ->
+            UniffiLib.INSTANCE.uniffi_jist_core_fn_func_data_to_json(FfiConverterMapStringTypeJistValue.lower(`data`), _status)
+        },
+    )
+
+/**
  * See [`font_weight_bucket`].
  */
 fun `fontWeightBucketFfi`(`value`: kotlin.Double): kotlin.UShort =
@@ -3501,5 +3531,16 @@ fun `parseTemplateJson`(`json`: kotlin.String): JistTemplate =
     FfiConverterTypeJistTemplate.lift(
         uniffiRustCallWithError(ParseException) { _status ->
             UniffiLib.INSTANCE.uniffi_jist_core_fn_func_parse_template_json(FfiConverterString.lower(`json`), _status)
+        },
+    )
+
+/**
+ * Serialize a template back to canonical JSON (e.g. for Live Activity
+ * attributes, persistence, or transport). Inverse of [`parse_template_json`].
+ */
+fun `templateToJson`(`template`: JistTemplate): kotlin.String =
+    FfiConverterString.lift(
+        uniffiRustCall { _status ->
+            UniffiLib.INSTANCE.uniffi_jist_core_fn_func_template_to_json(FfiConverterTypeJistTemplate.lower(`template`), _status)
         },
     )

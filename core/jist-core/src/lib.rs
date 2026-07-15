@@ -66,6 +66,21 @@ pub fn parse_data_json(
     models::parse_data(&json)
 }
 
+/// Serialize a template back to canonical JSON (e.g. for Live Activity
+/// attributes, persistence, or transport). Inverse of [`parse_template_json`].
+#[cfg(not(target_arch = "wasm32"))]
+#[uniffi::export]
+pub fn template_to_json(template: models::JistTemplate) -> String {
+    serde_json::to_string(&template).unwrap_or_default()
+}
+
+/// Serialize a data/theme dictionary back to JSON. Inverse of [`parse_data_json`].
+#[cfg(not(target_arch = "wasm32"))]
+#[uniffi::export]
+pub fn data_to_json(data: std::collections::HashMap<String, models::JistValue>) -> String {
+    serde_json::to_string(&data).unwrap_or_default()
+}
+
 /// Returns the semver version of jist-core. Used as a smoke test across
 /// all three UniFFI consumers (Swift, Kotlin, TS/WASM).
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen::prelude::wasm_bindgen)]
