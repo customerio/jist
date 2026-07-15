@@ -43,6 +43,25 @@ dependencies {
     implementation("net.java.dev.jna:jna:5.15.0@aar")
 }
 
+// Release AARs must embed the Rust core for every shipped ABI — a release
+// built from a clean checkout without running cargo-ndk would otherwise
+// publish an AAR whose first UniFFI call fails to load libjist_core.
+val requiredAbis = listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+tasks.matching { it.name == "assembleRelease" || it.name == "bundleReleaseAar" }.configureEach {
+    doFirst {
+        val missing = requiredAbis.filter {
+            !project.file("src/main/jniLibs/$it/libjist_core.so").exists()
+        }
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "libjist_core.so missing for ABIs $missing. Build it first:\n" +
+                "  cd core && cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 " +
+                "-o ../android/jist/src/main/jniLibs build --release"
+            )
+        }
+    }
+}
+
 // Maven Central coordinates: io.customer.android:jist (group comes from the shared plugin).
 customerIoPublish {
     artifactId = "jist"

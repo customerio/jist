@@ -7,6 +7,16 @@ function generateCssModule() {
   fs.writeFileSync("src/jist-css.ts", `export default \`${escaped}\`;\n`);
 }
 
+// The jist-core (Rust) wasm module is a build input — without it the compiled
+// element cannot resolve ./wasm/jist_core.js and every consumer install breaks.
+if (!fs.existsSync("src/wasm/jist_core.js")) {
+  console.error(
+    "src/wasm is missing — build the Rust core first: npm run build:wasm " +
+    "(requires the Rust toolchain + wasm-bindgen; see core/build-all.sh)"
+  );
+  process.exit(1);
+}
+
 generateCssModule();
 execSync("tsc", { stdio: "inherit" });
 

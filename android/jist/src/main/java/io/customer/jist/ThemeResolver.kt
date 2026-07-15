@@ -73,7 +73,7 @@ class JistThemeResolver(
         variant: String? = null,
         group: String,
         property: String
-    ): Int? = core.resolveInt(type, variant, group, property)?.toInt()
+    ): Int? = core.resolveInt(type, variant, group, property)
 
     companion object {
         /** Parses `#RRGGBB` / `#RRGGBBAA` via jist-core's shared hex parser. */

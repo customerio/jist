@@ -28,10 +28,17 @@ pub struct Rgba {
     pub a: f64,
 }
 
-/// Parse a `#RRGGBB` or `#RRGGBBAA` hex color (leading `#` optional,
+/// Parse a `#RRGGBB` or `#RRGGBBAA` hex color (a single leading `#` optional,
 /// surrounding whitespace ignored, case-insensitive).
 pub fn parse_hex_color(hex: &str) -> Option<Rgba> {
-    let h = hex.trim().trim_start_matches('#');
+    let t = hex.trim();
+    let h = t.strip_prefix('#').unwrap_or(t);
+    // Guard before slicing: byte-indexed slices below assume ASCII. Multibyte
+    // UTF-8 input (e.g. "1é123") would otherwise split a char boundary and
+    // panic — which aborts the host app under panic=abort.
+    if !h.is_ascii() {
+        return None;
+    }
     let byte = |i: usize| u8::from_str_radix(&h[i..i + 2], 16).ok();
     match h.len() {
         6 => Some(Rgba {
@@ -201,16 +208,27 @@ impl ThemeResolver {
     }
 
     /// Resolve an integral property (e.g. `maxLines`).
+    ///
+    /// Checked: non-finite, fractional, or out-of-i32-range values resolve to
+    /// `None` (hosts then use their fallback) instead of wrapping — a raw
+    /// `f64 as i64` here let a theme value like `4294967295` reach Kotlin,
+    /// wrap to `-1` in `toInt()`, and crash Compose's `maxLines`.
     pub fn resolve_int(
         &self,
         type_name: String,
         variant: Option<String>,
         group: String,
         property: String,
-    ) -> Option<i64> {
+    ) -> Option<i32> {
         self.resolve(type_name, variant, group, property, None)
             .and_then(|v| v.as_f64())
-            .map(|n| n as i64)
+            .and_then(|n| {
+                if n.is_finite() && n.fract() == 0.0 && (i32::MIN as f64..=i32::MAX as f64).contains(&n) {
+                    Some(n as i32)
+                } else {
+                    None
+                }
+            })
     }
 
     /// Resolve a color property to RGBA components; `None` when the property
@@ -406,5 +424,37 @@ mod tests {
         assert_eq!(n, 42.0);
         // maxLines may or may not exist; must not panic either way.
         let _ = r.resolve_int("text".into(), None, "text".into(), "maxLines".into());
+    }
+}
+
+// Regression tests for defects surfaced by adversarial review (2026-07-15).
+#[cfg(test)]
+mod adversarial_regressions {
+    use super::*;
+    use crate::models::parse_data;
+
+    #[test]
+    fn hex_with_multibyte_utf8_must_not_panic() {
+        // 6 bytes, but not 6 ASCII chars — slicing at byte 2 would split 'é'
+        // and abort the host app under panic=abort.
+        assert_eq!(parse_hex_color("1é123"), None);
+        assert_eq!(parse_hex_color("éééééé"), None);
+        assert_eq!(parse_hex_color("##ffffff"), None); // only a single '#' is legal
+        assert_eq!(parse_hex_color("#FFFFFF").map(|c| c.r), Some(1.0)); // still parses
+    }
+
+    #[test]
+    fn resolve_int_rejects_wrapping_and_fractional_values() {
+        let theme = parse_data(
+            r#"{"text": {"text": {"maxLines": 4294967295, "lineClamp": 2.5, "ok": 3}}}"#,
+        )
+        .unwrap();
+        let r = ThemeResolver::new(theme, false);
+        let get = |p: &str| r.resolve_int("text".into(), None, "text".into(), p.into());
+        // Would previously reach Kotlin as i64, wrap to -1 in toInt(), and
+        // crash Compose's maxLines. Out-of-i32-range now resolves to None.
+        assert_eq!(get("maxLines"), None);
+        assert_eq!(get("lineClamp"), None); // fractional → None
+        assert_eq!(get("ok"), Some(3));
     }
 }

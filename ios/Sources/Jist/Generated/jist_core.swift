@@ -414,15 +414,15 @@ private struct FfiConverterUInt16: FfiConverterPrimitive {
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-private struct FfiConverterInt64: FfiConverterPrimitive {
-    typealias FfiType = Int64
-    typealias SwiftType = Int64
+private struct FfiConverterInt32: FfiConverterPrimitive {
+    typealias FfiType = Int32
+    typealias SwiftType = Int32
 
-    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Int64 {
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Int32 {
         return try lift(readInt(&buf))
     }
 
-    static func write(_ value: Int64, into buf: inout [UInt8]) {
+    static func write(_ value: Int32, into buf: inout [UInt8]) {
         writeInt(&buf, lower(value))
     }
 }
@@ -527,8 +527,13 @@ public protocol ThemeResolverProtocol: AnyObject {
 
     /**
      * Resolve an integral property (e.g. `maxLines`).
+     *
+     * Checked: non-finite, fractional, or out-of-i32-range values resolve to
+     * `None` (hosts then use their fallback) instead of wrapping — a raw
+     * `f64 as i64` here let a theme value like `4294967295` reach Kotlin,
+     * wrap to `-1` in `toInt()`, and crash Compose's `maxLines`.
      */
-    func resolveInt(typeName: String, variant: String?, group: String, property: String) -> Int64?
+    func resolveInt(typeName: String, variant: String?, group: String, property: String) -> Int32?
 
     /**
      * Resolve a numeric property, falling back when absent or non-numeric.
@@ -642,9 +647,14 @@ open class ThemeResolver:
 
     /**
      * Resolve an integral property (e.g. `maxLines`).
+     *
+     * Checked: non-finite, fractional, or out-of-i32-range values resolve to
+     * `None` (hosts then use their fallback) instead of wrapping — a raw
+     * `f64 as i64` here let a theme value like `4294967295` reach Kotlin,
+     * wrap to `-1` in `toInt()`, and crash Compose's `maxLines`.
      */
-    open func resolveInt(typeName: String, variant: String?, group: String, property: String) -> Int64? {
-        return try! FfiConverterOptionInt64.lift(try! rustCall {
+    open func resolveInt(typeName: String, variant: String?, group: String, property: String) -> Int32? {
+        return try! FfiConverterOptionInt32.lift(try! rustCall {
             uniffi_jist_core_fn_method_themeresolver_resolve_int(self.uniffiClonePointer(),
                                                                  FfiConverterString.lower(typeName),
                                                                  FfiConverterOptionString.lower(variant),
@@ -847,8 +857,8 @@ public func FfiConverterTypeJistActionEvent_lower(_ value: JistActionEvent) -> R
 public struct JistActionNode {
     public var name: String
     /**
-     * Static metadata forwarded verbatim in the action callback. Arbitrary
-     * JSON, preserved as-is.
+     * Static metadata forwarded to the action callback as parsed JSON
+     * (see [`JistValue`] for number semantics).
      */
     public var meta: JistValue?
     public var children: [JistNode]
@@ -857,8 +867,8 @@ public struct JistActionNode {
     /// declare one manually.
     public init(name: String,
                 /* 
-                    * Static metadata forwarded verbatim in the action callback. Arbitrary
-                    * JSON, preserved as-is.
+                    * Static metadata forwarded to the action callback as parsed JSON
+                    * (see [`JistValue`] for number semantics).
                     */ meta: JistValue?, children: [JistNode])
     {
         self.name = name
@@ -1529,9 +1539,11 @@ public struct JistTemplate {
      */
     public var version: String
     /**
-     * Root of the tree. Per the schema this is always a layout node, but we
-     * model it as a general node so malformed/foreign roots degrade to
-     * `JistNode::Unknown` rather than failing the whole parse.
+     * Root of the tree. Per the schema this must be a container node
+     * (layout, action, or dynamicLayout). It is modeled as a general node,
+     * so parsing alone does not enforce that constraint — schema validation
+     * is a separate, planned layer. Roots with an *unrecognized* `type`
+     * degrade to `JistNode::Unknown` rather than failing the whole parse.
      */
     public var root: JistNode
 
@@ -1543,9 +1555,11 @@ public struct JistTemplate {
          * templates whose version they do not support.
          */ version: String,
         /* 
-            * Root of the tree. Per the schema this is always a layout node, but we
-            * model it as a general node so malformed/foreign roots degrade to
-            * `JistNode::Unknown` rather than failing the whole parse.
+            * Root of the tree. Per the schema this must be a container node
+            * (layout, action, or dynamicLayout). It is modeled as a general node,
+            * so parsing alone does not enforce that constraint — schema validation
+            * is a separate, planned layer. Roots with an *unrecognized* `type`
+            * degrade to `JistNode::Unknown` rather than failing the whole parse.
             */ root: JistNode
     ) {
         self.version = version
@@ -2054,6 +2068,11 @@ extension JistNode: Equatable, Hashable {}
  * bags. This replaces the hand-written `JistValue.swift` (iOS), kotlinx
  * `JsonElement` usage (Android), and `unknown` (web) with one FFI-friendly
  * type. Recursion flows through `Vec`/`HashMap`, so no boxing is needed.
+ *
+ * Number semantics: every JSON number is held as `f64` (IEEE-754 double).
+ * Integers beyond ±2^53 lose precision, and host-constructed non-finite
+ * values serialize as `null`. Payloads that need exact 64-bit integers
+ * should carry them as strings.
  */
 
 public enum JistValue {
@@ -2180,8 +2199,8 @@ extension ParseError: Foundation.LocalizedError {
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-private struct FfiConverterOptionInt64: FfiConverterRustBuffer {
-    typealias SwiftType = Int64?
+private struct FfiConverterOptionInt32: FfiConverterRustBuffer {
+    typealias SwiftType = Int32?
 
     static func write(_ value: SwiftType, into buf: inout [UInt8]) {
         guard let value = value else {
@@ -2189,13 +2208,13 @@ private struct FfiConverterOptionInt64: FfiConverterRustBuffer {
             return
         }
         writeInt(&buf, Int8(1))
-        FfiConverterInt64.write(value, into: &buf)
+        FfiConverterInt32.write(value, into: &buf)
     }
 
     static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
-        case 1: return try FfiConverterInt64.read(from: &buf)
+        case 1: return try FfiConverterInt32.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -2536,8 +2555,12 @@ public func parseTemplateJson(json: String) throws -> JistTemplate {
 }
 
 /**
- * Serialize a template back to canonical JSON (e.g. for Live Activity
- * attributes, persistence, or transport). Inverse of [`parse_template_json`].
+ * Serialize a template to *normalized* JSON (e.g. for Live Activity
+ * attributes). NOT a lossless inverse of [`parse_template_json`]: nodes that
+ * parsed as `Unknown` re-serialize as `{"type":"unknown"}` (their original
+ * payload is not retained), and unrecognized properties on known nodes are
+ * dropped. Do not round-trip documents that must preserve fields this build
+ * doesn't understand — keep the original JSON string for that.
  */
 public func templateToJson(template: JistTemplate) -> String {
     return try! FfiConverterString.lift(try! rustCall {
@@ -2584,7 +2607,7 @@ nonisolated(unsafe) private var initializationResult: InitializationResult = {
     if uniffi_jist_core_checksum_func_parse_template_json() != 7850 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_jist_core_checksum_func_template_to_json() != 6863 {
+    if uniffi_jist_core_checksum_func_template_to_json() != 30795 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_jist_core_checksum_method_themeresolver_resolve() != 64770 {
@@ -2593,7 +2616,7 @@ nonisolated(unsafe) private var initializationResult: InitializationResult = {
     if uniffi_jist_core_checksum_method_themeresolver_resolve_color() != 27426 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_jist_core_checksum_method_themeresolver_resolve_int() != 36696 {
+    if uniffi_jist_core_checksum_method_themeresolver_resolve_int() != 23430 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_jist_core_checksum_method_themeresolver_resolve_number() != 63022 {

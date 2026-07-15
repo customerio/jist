@@ -1163,7 +1163,7 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_jist_core_checksum_func_parse_template_json() != 7850.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_jist_core_checksum_func_template_to_json() != 6863.toShort()) {
+    if (lib.uniffi_jist_core_checksum_func_template_to_json() != 30795.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_jist_core_checksum_method_themeresolver_resolve() != 64770.toShort()) {
@@ -1172,7 +1172,7 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_jist_core_checksum_method_themeresolver_resolve_color() != 27426.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_jist_core_checksum_method_themeresolver_resolve_int() != 36696.toShort()) {
+    if (lib.uniffi_jist_core_checksum_method_themeresolver_resolve_int() != 23430.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_jist_core_checksum_method_themeresolver_resolve_number() != 63022.toShort()) {
@@ -1258,20 +1258,20 @@ public object FfiConverterUShort : FfiConverter<UShort, Short> {
 /**
  * @suppress
  */
-public object FfiConverterLong : FfiConverter<Long, Long> {
-    override fun lift(value: Long): Long = value
+public object FfiConverterInt : FfiConverter<Int, Int> {
+    override fun lift(value: Int): Int = value
 
-    override fun read(buf: ByteBuffer): Long = buf.getLong()
+    override fun read(buf: ByteBuffer): Int = buf.getInt()
 
-    override fun lower(value: Long): Long = value
+    override fun lower(value: Int): Int = value
 
-    override fun allocationSize(value: Long) = 8UL
+    override fun allocationSize(value: Int) = 4UL
 
     override fun write(
-        value: Long,
+        value: Int,
         buf: ByteBuffer,
     ) {
-        buf.putLong(value)
+        buf.putInt(value)
     }
 }
 
@@ -1578,13 +1578,18 @@ public interface ThemeResolverInterface {
 
     /**
      * Resolve an integral property (e.g. `maxLines`).
+     *
+     * Checked: non-finite, fractional, or out-of-i32-range values resolve to
+     * `None` (hosts then use their fallback) instead of wrapping — a raw
+     * `f64 as i64` here let a theme value like `4294967295` reach Kotlin,
+     * wrap to `-1` in `toInt()`, and crash Compose's `maxLines`.
      */
     fun `resolveInt`(
         `typeName`: kotlin.String,
         `variant`: kotlin.String?,
         `group`: kotlin.String,
         `property`: kotlin.String,
-    ): kotlin.Long?
+    ): kotlin.Int?
 
     /**
      * Resolve a numeric property, falling back when absent or non-numeric.
@@ -1777,14 +1782,19 @@ open class ThemeResolver :
 
     /**
      * Resolve an integral property (e.g. `maxLines`).
+     *
+     * Checked: non-finite, fractional, or out-of-i32-range values resolve to
+     * `None` (hosts then use their fallback) instead of wrapping — a raw
+     * `f64 as i64` here let a theme value like `4294967295` reach Kotlin,
+     * wrap to `-1` in `toInt()`, and crash Compose's `maxLines`.
      */
     override fun `resolveInt`(
         `typeName`: kotlin.String,
         `variant`: kotlin.String?,
         `group`: kotlin.String,
         `property`: kotlin.String,
-    ): kotlin.Long? =
-        FfiConverterOptionalLong.lift(
+    ): kotlin.Int? =
+        FfiConverterOptionalInt.lift(
             callWithPointer {
                 uniffiRustCall { _status ->
                     UniffiLib.INSTANCE.uniffi_jist_core_fn_method_themeresolver_resolve_int(
@@ -1962,8 +1972,8 @@ public object FfiConverterTypeJistActionEvent : FfiConverterRustBuffer<JistActio
 data class JistActionNode(
     var `name`: kotlin.String,
     /**
-     * Static metadata forwarded verbatim in the action callback. Arbitrary
-     * JSON, preserved as-is.
+     * Static metadata forwarded to the action callback as parsed JSON
+     * (see [`JistValue`] for number semantics).
      */
     var `meta`: JistValue?,
     var `children`: List<JistNode>,
@@ -2317,9 +2327,11 @@ data class JistTemplate(
      */
     var `version`: kotlin.String,
     /**
-     * Root of the tree. Per the schema this is always a layout node, but we
-     * model it as a general node so malformed/foreign roots degrade to
-     * `JistNode::Unknown` rather than failing the whole parse.
+     * Root of the tree. Per the schema this must be a container node
+     * (layout, action, or dynamicLayout). It is modeled as a general node,
+     * so parsing alone does not enforce that constraint — schema validation
+     * is a separate, planned layer. Roots with an *unrecognized* `type`
+     * degrade to `JistNode::Unknown` rather than failing the whole parse.
      */
     var `root`: JistNode,
 ) {
@@ -2865,6 +2877,11 @@ public object FfiConverterTypeJistNode : FfiConverterRustBuffer<JistNode> {
  * bags. This replaces the hand-written `JistValue.swift` (iOS), kotlinx
  * `JsonElement` usage (Android), and `unknown` (web) with one FFI-friendly
  * type. Recursion flows through `Vec`/`HashMap`, so no boxing is needed.
+ *
+ * Number semantics: every JSON number is held as `f64` (IEEE-754 double).
+ * Integers beyond ±2^53 lose precision, and host-constructed non-finite
+ * values serialize as `null`. Payloads that need exact 64-bit integers
+ * should carry them as strings.
  */
 sealed class JistValue {
     object Null : JistValue()
@@ -3086,31 +3103,31 @@ public object FfiConverterTypeParseError : FfiConverterRustBuffer<ParseException
 /**
  * @suppress
  */
-public object FfiConverterOptionalLong : FfiConverterRustBuffer<kotlin.Long?> {
-    override fun read(buf: ByteBuffer): kotlin.Long? {
+public object FfiConverterOptionalInt : FfiConverterRustBuffer<kotlin.Int?> {
+    override fun read(buf: ByteBuffer): kotlin.Int? {
         if (buf.get().toInt() == 0) {
             return null
         }
-        return FfiConverterLong.read(buf)
+        return FfiConverterInt.read(buf)
     }
 
-    override fun allocationSize(value: kotlin.Long?): ULong {
+    override fun allocationSize(value: kotlin.Int?): ULong {
         if (value == null) {
             return 1UL
         } else {
-            return 1UL + FfiConverterLong.allocationSize(value)
+            return 1UL + FfiConverterInt.allocationSize(value)
         }
     }
 
     override fun write(
-        value: kotlin.Long?,
+        value: kotlin.Int?,
         buf: ByteBuffer,
     ) {
         if (value == null) {
             buf.put(0)
         } else {
             buf.put(1)
-            FfiConverterLong.write(value, buf)
+            FfiConverterInt.write(value, buf)
         }
     }
 }
@@ -3535,8 +3552,12 @@ fun `parseTemplateJson`(`json`: kotlin.String): JistTemplate =
     )
 
 /**
- * Serialize a template back to canonical JSON (e.g. for Live Activity
- * attributes, persistence, or transport). Inverse of [`parse_template_json`].
+ * Serialize a template to *normalized* JSON (e.g. for Live Activity
+ * attributes). NOT a lossless inverse of [`parse_template_json`]: nodes that
+ * parsed as `Unknown` re-serialize as `{"type":"unknown"}` (their original
+ * payload is not retained), and unrecognized properties on known nodes are
+ * dropped. Do not round-trip documents that must preserve fields this build
+ * doesn't understand — keep the original JSON string for that.
  */
 fun `templateToJson`(`template`: JistTemplate): kotlin.String =
     FfiConverterString.lift(

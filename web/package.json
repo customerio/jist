@@ -28,7 +28,7 @@
     "build": "node build.cjs",
     "dev": "node dev.cjs",
     "test": "playwright test",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build:wasm && npm run build"
   },
   "author": "Customer.io (https://customer.io)",
   "license": "MIT",

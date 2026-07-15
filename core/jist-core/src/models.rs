@@ -23,6 +23,11 @@ use std::collections::HashMap;
 /// bags. This replaces the hand-written `JistValue.swift` (iOS), kotlinx
 /// `JsonElement` usage (Android), and `unknown` (web) with one FFI-friendly
 /// type. Recursion flows through `Vec`/`HashMap`, so no boxing is needed.
+///
+/// Number semantics: every JSON number is held as `f64` (IEEE-754 double).
+/// Integers beyond ±2^53 lose precision, and host-constructed non-finite
+/// values serialize as `null`. Payloads that need exact 64-bit integers
+/// should carry them as strings.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(target_arch = "wasm32", derive(tsify_next::Tsify))]
 #[cfg_attr(not(target_arch = "wasm32"), derive(uniffi::Enum))]
@@ -134,9 +139,11 @@ pub struct JistTemplate {
     /// Spec version this template targets (e.g. "1"). Renderers silently skip
     /// templates whose version they do not support.
     pub version: String,
-    /// Root of the tree. Per the schema this is always a layout node, but we
-    /// model it as a general node so malformed/foreign roots degrade to
-    /// `JistNode::Unknown` rather than failing the whole parse.
+    /// Root of the tree. Per the schema this must be a container node
+    /// (layout, action, or dynamicLayout). It is modeled as a general node,
+    /// so parsing alone does not enforce that constraint — schema validation
+    /// is a separate, planned layer. Roots with an *unrecognized* `type`
+    /// degrade to `JistNode::Unknown` rather than failing the whole parse.
     pub root: JistNode,
 }
 
@@ -192,7 +199,9 @@ impl JistNode {
         match self {
             JistNode::Layout(n) => n.children.iter().collect(),
             JistNode::Action(n) => n.children.iter().collect(),
-            JistNode::DynamicLayout(n) => n.template.iter().collect(),
+            // Only the first element is meaningful (see JistDynamicLayoutNode::
+            // template) — match the serializer rather than traversing extras.
+            JistNode::DynamicLayout(n) => n.template.first().into_iter().collect(),
             _ => Vec::new(),
         }
     }
@@ -229,8 +238,8 @@ pub struct JistLayoutNode {
 #[serde(rename_all = "camelCase")]
 pub struct JistActionNode {
     pub name: String,
-    /// Static metadata forwarded verbatim in the action callback. Arbitrary
-    /// JSON, preserved as-is.
+    /// Static metadata forwarded to the action callback as parsed JSON
+    /// (see [`JistValue`] for number semantics).
     #[serde(skip_serializing_if = "Option::is_none")]
     #[cfg_attr(target_arch = "wasm32", tsify(type = "Record<string, unknown>"))]
     pub meta: Option<JistValue>,

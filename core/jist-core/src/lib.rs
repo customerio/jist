@@ -66,8 +66,12 @@ pub fn parse_data_json(
     models::parse_data(&json)
 }
 
-/// Serialize a template back to canonical JSON (e.g. for Live Activity
-/// attributes, persistence, or transport). Inverse of [`parse_template_json`].
+/// Serialize a template to *normalized* JSON (e.g. for Live Activity
+/// attributes). NOT a lossless inverse of [`parse_template_json`]: nodes that
+/// parsed as `Unknown` re-serialize as `{"type":"unknown"}` (their original
+/// payload is not retained), and unrecognized properties on known nodes are
+/// dropped. Do not round-trip documents that must preserve fields this build
+/// doesn't understand — keep the original JSON string for that.
 #[cfg(not(target_arch = "wasm32"))]
 #[uniffi::export]
 pub fn template_to_json(template: models::JistTemplate) -> String {

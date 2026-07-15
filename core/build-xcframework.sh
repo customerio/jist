@@ -37,7 +37,7 @@ cargo build -p jist-core --release --target x86_64-apple-ios
 cargo build -p jist-core --release --target aarch64-apple-darwin
 cargo build -p jist-core --release --target x86_64-apple-darwin
 
-say "Generating FFI header + modulemap"
+say "Generating FFI header + modulemap + Swift bindings (atomic with the binary)"
 rm -rf "$OUT" && mkdir -p "$HEADERS" "$OUT/sim" "$OUT/macos"
 cargo run -p jist-core --bin uniffi-bindgen -- generate \
     --library target/aarch64-apple-ios/release/libjist_core.dylib \
@@ -45,9 +45,20 @@ cargo run -p jist-core --bin uniffi-bindgen -- generate \
 cargo run -p jist-core --bin uniffi-bindgen -- generate \
     --library target/aarch64-apple-darwin/release/libjist_core.dylib \
     --language swift --out-dir "$HEADERS"
-# XCFramework headers use module.modulemap; drop the generated Swift file
-# (it ships as source in ios/Sources/Jist/Generated, not in the framework).
+# XCFramework headers use module.modulemap.
 mv "$HEADERS/jist_coreFFI.modulemap" "$HEADERS/module.modulemap"
+
+# The generated Swift source ships in ios/Sources/Jist/Generated — refresh it
+# from the SAME bindgen run as the binary so the two can never drift (stale
+# bindings otherwise fail at runtime via UniFFI's checksum guard).
+# uniffi 0.28's output needs one Swift-6 strict-concurrency fix: the lazy-init
+# flag is write-once, mark it nonisolated(unsafe) (what newer uniffi does).
+perl -pi -e 's/^private var initializationResult: InitializationResult = \{/nonisolated(unsafe) private var initializationResult: InitializationResult = {/' \
+    "$HEADERS/jist_core.swift"
+if ! cmp -s "$HEADERS/jist_core.swift" "$ROOT/../ios/Sources/Jist/Generated/jist_core.swift"; then
+    echo "  refreshing ios/Sources/Jist/Generated/jist_core.swift (bindings changed — commit it)"
+    cp "$HEADERS/jist_core.swift" "$ROOT/../ios/Sources/Jist/Generated/jist_core.swift"
+fi
 rm -f "$HEADERS/jist_core.swift"
 
 say "Lipo: universal simulator + macOS libraries"
