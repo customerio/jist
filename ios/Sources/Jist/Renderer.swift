@@ -556,6 +556,10 @@ struct JistImageView: View {
             } failure: {
                 Color.gray.opacity(0.2)
             }
+            // Reset the view identity when the URL changes so the load restarts. Native AsyncImage
+            // reloads on url change; our @State-based backport (onAppear-only) otherwise keeps the
+            // first resolved image for the view's lifetime even after `url` updates in place.
+            .id(url)
         }
     }
 
@@ -622,15 +626,12 @@ private struct JistAsyncImage<Content: View, Placeholder: View, Failure: View>: 
         if case .loading = phase {} else { return }
         URLSession.shared.dataTask(with: url) { data, _, _ in
             let resolved: Phase
+            // JistAsyncImage is only ever used on the iOS 13/14 fallback path (macOS 12+ takes the
+            // native AsyncImage branch above), so only the UIKit decode is reachable. The #else keeps
+            // non-iOS builds compiling but is never instantiated at runtime.
             #if canImport(UIKit)
             if let data, let uiImage = UIImage(data: data) {
                 resolved = .success(Image(uiImage: uiImage))
-            } else {
-                resolved = .failure
-            }
-            #elseif canImport(AppKit)
-            if let data, let nsImage = NSImage(data: data) {
-                resolved = .success(Image(nsImage: nsImage))
             } else {
                 resolved = .failure
             }
@@ -791,9 +792,11 @@ struct MarginModifier: ViewModifier {
 /// Falls back to plain Text when lineHeight is 0 (reset/unset).
 private func styledText(_ string: String, lineHeightMultiple: CGFloat) -> Text {
     guard lineHeightMultiple > 0 else { return Text(string) }
-    // `AttributedString` and `Text(AttributedString)` are iOS 15+. On iOS 13/14
-    // there's no SwiftUI way to apply a paragraph lineHeightMultiple, so fall back
-    // to plain Text — matching the reset/unset (lineHeight == 0) behavior.
+    // `AttributedString` and `Text(AttributedString)` are iOS 15+. On iOS 13/14 there is no SwiftUI
+    // way to apply a paragraph `lineHeightMultiple` to `Text`, so the multiplier is dropped and text
+    // renders at the font's natural line height. This is a known iOS 13/14 typography limitation —
+    // NOT equivalent to `lineHeight == 0` (reset); line spacing can differ slightly from iOS 15+.
+    // (A `lineSpacing` approximation would require returning a `View` rather than `Text`; deferred.)
     if #available(iOS 15, macOS 12, *) {
         var attributed = AttributedString(string)
         let paragraphStyle = NSMutableParagraphStyle()
@@ -808,15 +811,18 @@ private func styledText(_ string: String, lineHeightMultiple: CGFloat) -> Text {
 // MARK: - iOS 13/14 compatibility helpers
 
 /// `accessibilityAddTraits` / `accessibilityLabel` on `View` are iOS 14+; `onHover`
-/// is iOS 13.4+. These wrappers keep the call sites clean while supporting the
-/// iOS 13 deployment floor — applying the modifier where available and no-op'ing
-/// (or returning the view unchanged) on older OS versions.
+/// is iOS 13.4+. These wrappers keep the call sites clean while supporting the iOS 13
+/// deployment floor — using the current spelling where available and the older (but
+/// since-13.0) `accessibility(...)` spelling on iOS 13, so VoiceOver traits/labels are
+/// preserved on every supported OS (not dropped).
 extension View {
     func jistAddTraits(_ traits: AccessibilityTraits) -> some View {
         if #available(iOS 14, macOS 11, *) {
             return AnyView(self.accessibilityAddTraits(traits))
         } else {
-            return AnyView(self)
+            // Deprecated spelling, available since iOS 13.0 — keeps the traits for VoiceOver on
+            // iOS 13 rather than dropping them. Remove when the deployment floor reaches iOS 14.
+            return AnyView(self.accessibility(addTraits: traits))
         }
     }
 
@@ -824,7 +830,9 @@ extension View {
         if #available(iOS 14, macOS 11, *) {
             return AnyView(self.accessibilityLabel(label))
         } else {
-            return AnyView(self)
+            // Deprecated spelling, available since iOS 13.0 — keeps the label for VoiceOver on
+            // iOS 13 rather than dropping it. Remove when the deployment floor reaches iOS 14.
+            return AnyView(self.accessibility(label: Text(label)))
         }
     }
 
