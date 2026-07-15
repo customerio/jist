@@ -23,6 +23,8 @@ local.properties
 android/**/build/
 android/**/.cxx/
 android/example/src/main/res/raw/*.json
+# Rust native libs staged for the AAR (built via cargo-ndk; see core/build-all.sh)
+android/jist/src/main/jniLibs/
 
 # IDE
 .idea/

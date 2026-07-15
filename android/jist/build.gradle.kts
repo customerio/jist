@@ -2,7 +2,6 @@ plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
-    id("org.jetbrains.kotlin.plugin.serialization")
     id("app.cash.paparazzi")
 }
 
@@ -39,6 +38,15 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.4")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    // JNA loads the jist-core (Rust) native library for the UniFFI bindings.
+    // AAR variant for devices; plain JAR for local JVM (Paparazzi) tests.
+    implementation("net.java.dev.jna:jna:5.15.0@aar")
+    testImplementation("net.java.dev.jna:jna:5.15.0")
     testImplementation("io.coil-kt.coil3:coil-test:3.0.4")
+}
+
+// JVM tests (Paparazzi) load the host build of jist-core; build it with
+// `cargo build` in core/ first (see core/build-all.sh).
+tasks.withType<Test>().configureEach {
+    systemProperty("jna.library.path", "${rootDir}/../core/target/debug")
 }

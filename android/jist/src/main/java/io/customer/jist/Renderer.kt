@@ -28,10 +28,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
+import uniffi.jist_core.JistNode
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -59,7 +56,7 @@ private fun tightTextStyle(fontSize: TextUnit, fontWeight: FontWeight, color: Co
 @Composable
 internal fun JistNodeView(
     node: JistNode,
-    data: Map<String, JsonElement>,
+    data: Map<String, JistValue>,
     resolver: JistThemeResolver,
     formatDate: ((String, String) -> String)?,
     onAction: ((JistActionEvent) -> Unit)?,
@@ -68,15 +65,15 @@ internal fun JistNodeView(
     templateDepth: Int = 0
 ) {
     when (node) {
-        is JistNode.Layout -> JistLayoutView(node, data, resolver, formatDate, onAction, modifier, templates, templateDepth)
-        is JistNode.Action -> JistActionView(node, data, resolver, formatDate, onAction, modifier, templates, templateDepth)
-        is JistNode.Heading -> JistHeadingView(node, data, resolver, modifier)
-        is JistNode.Text -> JistTextView(node, data, resolver, modifier)
-        is JistNode.Date -> JistDateView(node, data, resolver, formatDate, modifier)
-        is JistNode.Button -> JistButtonView(node, data, resolver, onAction, modifier)
-        is JistNode.Image -> JistImageView(node, data, resolver, modifier)
-        is JistNode.DynamicLayout -> JistDynamicLayoutView(node, data, resolver, formatDate, onAction, modifier, templates, templateDepth)
-        is JistNode.Template -> JistTemplateView(node, data, resolver, formatDate, onAction, modifier, templates, templateDepth)
+        is JistNode.Layout -> JistLayoutView(node.v1, data, resolver, formatDate, onAction, modifier, templates, templateDepth)
+        is JistNode.Action -> JistActionView(node.v1, data, resolver, formatDate, onAction, modifier, templates, templateDepth)
+        is JistNode.Heading -> JistHeadingView(node.v1, data, resolver, modifier)
+        is JistNode.Text -> JistTextView(node.v1, data, resolver, modifier)
+        is JistNode.Date -> JistDateView(node.v1, data, resolver, formatDate, modifier)
+        is JistNode.Button -> JistButtonView(node.v1, data, resolver, onAction, modifier)
+        is JistNode.Image -> JistImageView(node.v1, data, resolver, modifier)
+        is JistNode.DynamicLayout -> JistDynamicLayoutView(node.v1, data, resolver, formatDate, onAction, modifier, templates, templateDepth)
+        is JistNode.Template -> JistTemplateView(node.v1, data, resolver, formatDate, onAction, modifier, templates, templateDepth)
         is JistNode.Unknown -> { }
     }
 }
@@ -85,8 +82,8 @@ internal fun JistNodeView(
 
 @Composable
 private fun JistLayoutView(
-    node: JistNode.Layout,
-    data: Map<String, JsonElement>,
+    node: JistLayoutNode,
+    data: Map<String, JistValue>,
     resolver: JistThemeResolver,
     formatDate: ((String, String) -> String)?,
     onAction: ((JistActionEvent) -> Unit)?,
@@ -96,7 +93,7 @@ private fun JistLayoutView(
 ) {
     val isVertical = node.direction == "vertical"
     val isStretch = node.align == null || node.align == "stretch"
-    val gap = node.gap ?: 0f
+    val gap = (node.gap ?: 0.0).toFloat()
     val marginMod = marginModifier(node.margin)
 
     if (isVertical) {
@@ -184,10 +181,10 @@ private fun verticalAlignment(align: String?): Alignment.Vertical {
 private fun marginModifier(margin: JistSpacing?): Modifier {
     margin ?: return Modifier
     return Modifier.padding(
-        start = (margin.left ?: 0f).dp,
-        top = (margin.top ?: 0f).dp,
-        end = (margin.right ?: 0f).dp,
-        bottom = (margin.bottom ?: 0f).dp
+        start = (margin.left ?: 0.0).dp,
+        top = (margin.top ?: 0.0).dp,
+        end = (margin.right ?: 0.0).dp,
+        bottom = (margin.bottom ?: 0.0).dp
     )
 }
 
@@ -195,8 +192,8 @@ private fun marginModifier(margin: JistSpacing?): Modifier {
 
 @Composable
 private fun JistActionView(
-    node: JistNode.Action,
-    data: Map<String, JsonElement>,
+    node: JistActionNode,
+    data: Map<String, JistValue>,
     resolver: JistThemeResolver,
     formatDate: ((String, String) -> String)?,
     onAction: ((JistActionEvent) -> Unit)?,
@@ -233,14 +230,14 @@ private fun JistActionView(
 
 @Composable
 private fun JistHeadingView(
-    node: JistNode.Heading,
-    data: Map<String, JsonElement>,
+    node: JistHeadingNode,
+    data: Map<String, JistValue>,
     resolver: JistThemeResolver,
     modifier: Modifier = Modifier
 ) {
     val name = node.name ?: "heading"
     val variant = node.variant ?: "h3"
-    val text = (data[name] as? JsonPrimitive)?.contentOrNull ?: ""
+    val text = data[name]?.stringValue ?: ""
 
     Text(
         text = text,
@@ -266,13 +263,13 @@ private fun defaultHeadingSize(variant: String): Float = when (variant) {
 
 @Composable
 private fun JistTextView(
-    node: JistNode.Text,
-    data: Map<String, JsonElement>,
+    node: JistTextNode,
+    data: Map<String, JistValue>,
     resolver: JistThemeResolver,
     modifier: Modifier = Modifier
 ) {
     val name = node.name ?: "text"
-    val text = (data[name] as? JsonPrimitive)?.contentOrNull ?: ""
+    val text = data[name]?.stringValue ?: ""
     val maxLines = resolver.resolveInt("text", node.variant, "text", "maxLines")
 
     Text(
@@ -295,14 +292,14 @@ private fun JistTextView(
 
 @Composable
 private fun JistDateView(
-    node: JistNode.Date,
-    data: Map<String, JsonElement>,
+    node: JistDateNode,
+    data: Map<String, JistValue>,
     resolver: JistThemeResolver,
     formatDate: ((String, String) -> String)?,
     modifier: Modifier = Modifier
 ) {
     val name = node.name ?: "date"
-    val iso = (data[name] as? JsonPrimitive)?.contentOrNull ?: ""
+    val iso = data[name]?.stringValue ?: ""
 
     val display = when {
         iso.isEmpty() -> ""
@@ -338,14 +335,14 @@ private fun defaultFormatDate(iso: String): String {
 
 @Composable
 private fun JistButtonView(
-    node: JistNode.Button,
-    data: Map<String, JsonElement>,
+    node: JistButtonNode,
+    data: Map<String, JistValue>,
     resolver: JistThemeResolver,
     onAction: ((JistActionEvent) -> Unit)?,
     modifier: Modifier = Modifier
 ) {
-    val buttonData = data[node.name] as? JsonObject ?: return
-    val label = (buttonData["label"] as? JsonPrimitive)?.contentOrNull ?: return
+    val buttonData = data[node.name]?.objectValue ?: return
+    val label = buttonData["label"]?.stringValue ?: return
 
     val bgColor = resolver.resolveColor("button", node.variant, "background", "color", fallback = Color(0xFF4F46E5))
     val textColor = resolver.resolveColor("button", node.variant, "text", "color", fallback = Color.White)
@@ -398,8 +395,8 @@ private fun JistButtonView(
 
 @Composable
 private fun JistDynamicLayoutView(
-    node: JistNode.DynamicLayout,
-    data: Map<String, JsonElement>,
+    node: JistDynamicLayoutNode,
+    data: Map<String, JistValue>,
     resolver: JistThemeResolver,
     formatDate: ((String, String) -> String)?,
     onAction: ((JistActionEvent) -> Unit)?,
@@ -407,9 +404,10 @@ private fun JistDynamicLayoutView(
     templates: Map<String, JistTemplate>? = null,
     templateDepth: Int = 0
 ) {
-    val items = data[node.name] as? kotlinx.serialization.json.JsonArray ?: return
+    val items = data[node.name]?.arrayValue ?: return
+    val template = node.templateNode ?: return
     val isVertical = (node.direction ?: "vertical") == "vertical"
-    val gap = node.gap ?: 0f
+    val gap = (node.gap ?: 0.0).toFloat()
     val marginMod = marginModifier(node.margin)
 
     if (isVertical) {
@@ -419,8 +417,8 @@ private fun JistDynamicLayoutView(
             modifier = modifier.then(marginMod)
         ) {
             items.forEach { item ->
-                val itemData = (item as? JsonObject)?.toMap() ?: emptyMap()
-                JistNodeView(node.template, itemData, resolver, formatDate, onAction, Modifier.fillMaxWidth(), templates, templateDepth)
+                val itemData = item.objectValue ?: emptyMap()
+                JistNodeView(template, itemData, resolver, formatDate, onAction, Modifier.fillMaxWidth(), templates, templateDepth)
             }
         }
     } else {
@@ -430,8 +428,8 @@ private fun JistDynamicLayoutView(
             modifier = modifier.then(marginMod)
         ) {
             items.forEach { item ->
-                val itemData = (item as? JsonObject)?.toMap() ?: emptyMap()
-                JistNodeView(node.template, itemData, resolver, formatDate, onAction, templates = templates, templateDepth = templateDepth)
+                val itemData = item.objectValue ?: emptyMap()
+                JistNodeView(template, itemData, resolver, formatDate, onAction, templates = templates, templateDepth = templateDepth)
             }
         }
     }
@@ -441,8 +439,8 @@ private fun JistDynamicLayoutView(
 
 @Composable
 private fun JistTemplateView(
-    node: JistNode.Template,
-    data: Map<String, JsonElement>,
+    node: JistTemplateNode,
+    data: Map<String, JistValue>,
     resolver: JistThemeResolver,
     formatDate: ((String, String) -> String)?,
     onAction: ((JistActionEvent) -> Unit)?,
@@ -459,13 +457,13 @@ private fun JistTemplateView(
 
 @Composable
 private fun JistImageView(
-    node: JistNode.Image,
-    data: Map<String, JsonElement>,
+    node: JistImageNode,
+    data: Map<String, JistValue>,
     resolver: JistThemeResolver,
     modifier: Modifier = Modifier
 ) {
-    val url = (data[node.name] as? JsonPrimitive)?.contentOrNull ?: return
-    val altText = (data["title"] as? JsonPrimitive)?.contentOrNull ?: ""
+    val url = data[node.name]?.stringValue ?: return
+    val altText = data["title"]?.stringValue ?: ""
 
     val contentScale = when (node.objectFit) {
         "cover" -> ContentScale.Crop
@@ -477,7 +475,7 @@ private fun JistImageView(
     if (node.isFillWidth) imageMod = imageMod.fillMaxWidth()
     node.widthValue?.let { imageMod = imageMod.requiredWidth(it.dp) }
     node.height?.let { imageMod = imageMod.height(it.dp) }
-    imageMod = imageMod.clip(RoundedCornerShape((node.borderRadius ?: 0f).dp))
+    imageMod = imageMod.clip(RoundedCornerShape((node.borderRadius ?: 0.0).dp))
 
     AsyncImage(
         model = url,

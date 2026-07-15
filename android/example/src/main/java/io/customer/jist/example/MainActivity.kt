@@ -13,10 +13,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import io.customer.jist.JistActionEvent
-import io.customer.jist.JistMode
 import io.customer.jist.JistTemplate
+import io.customer.jist.JistValue
 import io.customer.jist.JistView
-import kotlinx.serialization.json.*
+import io.customer.jist.objectValue
+import uniffi.jist_core.JistMode
+import uniffi.jist_core.parseDataJson
+import uniffi.jist_core.parseRegistryJson
 import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -34,25 +37,21 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // All parsing goes through jist-core (Rust) — the same parser as iOS/web.
+
     private fun loadTemplates(): Map<String, List<JistTemplate>> {
         val json = resources.openRawResource(R.raw.templates).bufferedReader().readText()
-        val obj = Json.parseToJsonElement(json).jsonObject
-        val config = Json { ignoreUnknownKeys = true }
-        return obj.filterKeys { !it.startsWith("$") }
-            .mapValues { (_, value) ->
-                value.jsonArray.map { config.decodeFromJsonElement<JistTemplate>(it) }
-            }
+        return parseRegistryJson(json)
     }
 
-    private fun loadData(): Map<String, JsonObject> {
+    private fun loadData(): Map<String, Map<String, JistValue>> {
         val json = resources.openRawResource(R.raw.data).bufferedReader().readText()
-        return Json.parseToJsonElement(json).jsonObject
-            .mapValues { it.value.jsonObject }
+        return parseDataJson(json).mapValues { it.value.objectValue ?: emptyMap() }
     }
 
-    private fun loadTheme(): JsonObject {
+    private fun loadTheme(): Map<String, JistValue> {
         val json = resources.openRawResource(R.raw.theme).bufferedReader().readText()
-        return Json.parseToJsonElement(json).jsonObject
+        return parseDataJson(json)
     }
 }
 
@@ -60,8 +59,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ExampleScreen(
     templates: Map<String, List<JistTemplate>>,
-    dataEntries: Map<String, JsonObject>,
-    theme: JsonObject
+    dataEntries: Map<String, Map<String, JistValue>>,
+    theme: Map<String, JistValue>
 ) {
     var isDarkMode by remember { mutableStateOf(false) }
     val actionLog = remember { mutableStateListOf<String>() }
@@ -108,7 +107,7 @@ fun ExampleScreen(
                             templates = templates,
                             data = data,
                             theme = theme,
-                            mode = if (isDarkMode) JistMode.Dark else JistMode.Light,
+                            mode = if (isDarkMode) JistMode.DARK else JistMode.LIGHT,
                             formatDate = { iso, _ -> formatRelative(iso) },
                             onAction = { event ->
                                 val parts = mutableListOf("${event.component} \"${event.name}\"")

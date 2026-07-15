@@ -15,10 +15,10 @@ import coil3.ImageLoader
 import coil3.asImage
 import coil3.test.FakeImageLoaderEngine
 import com.android.ide.common.rendering.api.SessionParams
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
 import org.junit.Before
+import uniffi.jist_core.JistMode
+import uniffi.jist_core.parseDataJson
+import uniffi.jist_core.parseRegistryJson
 import org.junit.Rule
 import org.junit.Test
 
@@ -53,29 +53,28 @@ class SnapshotTests {
     private fun loadResource(name: String): String =
         javaClass.classLoader!!.getResourceAsStream(name)!!.bufferedReader().readText()
 
+    // All parsing goes through jist-core (Rust) — the same parser as iOS/web.
+
     private val allTemplates: Map<String, List<JistTemplate>> by lazy {
-        val obj = JistJson.parseToJsonElement(loadResource("templates.json")).jsonObject
-        listOf("basic", "image", "cta", "action", "hero", "inbox", "profile", "announcement").associateWith { key ->
-            obj[key]!!.jsonArray.map { JistJson.decodeFromJsonElement(JistTemplate.serializer(), it) }
-        }
+        parseRegistryJson(loadResource("templates.json"))
     }
 
-    private val allData: JsonObject by lazy {
-        JistJson.parseToJsonElement(loadResource("data.json")).jsonObject
+    private val allData: Map<String, JistValue> by lazy {
+        parseDataJson(loadResource("data.json"))
     }
 
-    private val theme: JsonObject by lazy {
-        JistJson.parseToJsonElement(loadResource("theme.json")).jsonObject
+    private val theme: Map<String, JistValue> by lazy {
+        parseDataJson(loadResource("theme.json"))
     }
 
     private fun snapshot(templateKey: String, mode: JistMode) {
-        val bg = if (mode == JistMode.Light) Color.White else Color.Black
+        val bg = if (mode == JistMode.LIGHT) Color.White else Color.Black
         paparazzi.snapshot {
             Box(modifier = Modifier.background(bg).padding(16.dp)) {
                 JistView(
                     name = templateKey,
                     templates = allTemplates,
-                    data = allData[templateKey]!!.jsonObject,
+                    data = allData[templateKey]!!.objectValue!!,
                     theme = theme,
                     mode = mode,
                     formatDate = { _, _ -> "Apr 1, 2026" }
@@ -86,41 +85,41 @@ class SnapshotTests {
 
     // -- basic --
 
-    @Test fun basic_light() = snapshot("basic", JistMode.Light)
-    @Test fun basic_dark() = snapshot("basic", JistMode.Dark)
+    @Test fun basic_light() = snapshot("basic", JistMode.LIGHT)
+    @Test fun basic_dark() = snapshot("basic", JistMode.DARK)
 
     // -- image --
 
-    @Test fun image_light() = snapshot("image", JistMode.Light)
-    @Test fun image_dark() = snapshot("image", JistMode.Dark)
+    @Test fun image_light() = snapshot("image", JistMode.LIGHT)
+    @Test fun image_dark() = snapshot("image", JistMode.DARK)
 
     // -- cta --
 
-    @Test fun cta_light() = snapshot("cta", JistMode.Light)
-    @Test fun cta_dark() = snapshot("cta", JistMode.Dark)
+    @Test fun cta_light() = snapshot("cta", JistMode.LIGHT)
+    @Test fun cta_dark() = snapshot("cta", JistMode.DARK)
 
     // -- action --
 
-    @Test fun action_light() = snapshot("action", JistMode.Light)
-    @Test fun action_dark() = snapshot("action", JistMode.Dark)
+    @Test fun action_light() = snapshot("action", JistMode.LIGHT)
+    @Test fun action_dark() = snapshot("action", JistMode.DARK)
 
     // -- hero --
 
-    @Test fun hero_light() = snapshot("hero", JistMode.Light)
-    @Test fun hero_dark() = snapshot("hero", JistMode.Dark)
+    @Test fun hero_light() = snapshot("hero", JistMode.LIGHT)
+    @Test fun hero_dark() = snapshot("hero", JistMode.DARK)
 
     // -- inbox --
 
-    @Test fun inbox_light() = snapshot("inbox", JistMode.Light)
-    @Test fun inbox_dark() = snapshot("inbox", JistMode.Dark)
+    @Test fun inbox_light() = snapshot("inbox", JistMode.LIGHT)
+    @Test fun inbox_dark() = snapshot("inbox", JistMode.DARK)
 
     // -- profile --
 
-    @Test fun profile_light() = snapshot("profile", JistMode.Light)
-    @Test fun profile_dark() = snapshot("profile", JistMode.Dark)
+    @Test fun profile_light() = snapshot("profile", JistMode.LIGHT)
+    @Test fun profile_dark() = snapshot("profile", JistMode.DARK)
 
     // -- announcement --
 
-    @Test fun announcement_light() = snapshot("announcement", JistMode.Light)
-    @Test fun announcement_dark() = snapshot("announcement", JistMode.Dark)
+    @Test fun announcement_light() = snapshot("announcement", JistMode.LIGHT)
+    @Test fun announcement_dark() = snapshot("announcement", JistMode.DARK)
 }

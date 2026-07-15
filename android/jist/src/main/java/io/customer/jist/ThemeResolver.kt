@@ -2,48 +2,29 @@ package io.customer.jist
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.floatOrNull
-import kotlinx.serialization.json.intOrNull
+import uniffi.jist_core.fontWeightBucketFfi
+import uniffi.jist_core.parseHexColorFfi
 
+/**
+ * Thin Compose adapter over the jist-core (Rust) `ThemeResolver`.
+ *
+ * The cascade (state → dark → variant → base), hex-color parsing, and
+ * font-weight bucketing all live in core/jist-core/src/theme_resolver.rs —
+ * shared with iOS. This file only maps Rust results onto Compose types.
+ */
 class JistThemeResolver(
-    private val theme: JsonObject,
-    private val isDark: Boolean
+    theme: Map<String, JistValue>,
+    isDark: Boolean
 ) {
+    private val core = uniffi.jist_core.ThemeResolver(theme, isDark)
+
     fun resolve(
         type: String,
         variant: String? = null,
         group: String,
         property: String,
         state: String? = null
-    ): JsonPrimitive? {
-        if (state != null) {
-            if (isDark) {
-                if (variant != null) {
-                    dig(listOf("modes", "dark", type, variant, "states", state, group, property))?.let { return it }
-                }
-                dig(listOf("modes", "dark", type, "states", state, group, property))?.let { return it }
-            }
-            if (variant != null) {
-                dig(listOf(type, variant, "states", state, group, property))?.let { return it }
-            }
-            dig(listOf(type, "states", state, group, property))?.let { return it }
-        }
-
-        if (isDark) {
-            if (variant != null) {
-                dig(listOf("modes", "dark", type, variant, group, property))?.let { return it }
-            }
-            dig(listOf("modes", "dark", type, group, property))?.let { return it }
-        }
-        if (variant != null) {
-            dig(listOf(type, variant, group, property))?.let { return it }
-        }
-        return dig(listOf(type, group, property))
-    }
+    ): JistValue? = core.resolve(type, variant, group, property, state)
 
     fun resolveColor(
         type: String,
@@ -53,8 +34,13 @@ class JistThemeResolver(
         state: String? = null,
         fallback: Color
     ): Color {
-        val hex = resolve(type, variant, group, property, state)?.contentOrNull ?: return fallback
-        return parseHexColor(hex) ?: fallback
+        val c = core.resolveColor(type, variant, group, property, state) ?: return fallback
+        return Color(
+            red = c.r.toFloat(),
+            green = c.g.toFloat(),
+            blue = c.b.toFloat(),
+            alpha = c.a.toFloat()
+        )
     }
 
     fun resolveFloat(
@@ -64,64 +50,41 @@ class JistThemeResolver(
         property: String,
         state: String? = null,
         fallback: Float
-    ): Float {
-        return resolve(type, variant, group, property, state)?.floatOrNull ?: fallback
-    }
+    ): Float = core.resolveNumber(type, variant, group, property, state, fallback.toDouble()).toFloat()
 
     fun resolveInt(
         type: String,
         variant: String? = null,
         group: String,
         property: String
-    ): Int? {
-        return resolve(type, variant, group, property)?.intOrNull
-    }
-
-    private fun dig(path: List<String>): JsonPrimitive? {
-        var current: JsonElement = theme
-        for (key in path) {
-            current = (current as? JsonObject)?.get(key) ?: return null
-        }
-        return current as? JsonPrimitive
-    }
+    ): Int? = core.resolveInt(type, variant, group, property)?.toInt()
 
     companion object {
+        /** Parses `#RRGGBB` / `#RRGGBBAA` via jist-core's shared hex parser. */
         fun parseHexColor(hex: String): Color? {
-            val h = hex.trimStart('#')
-            return when (h.length) {
-                6 -> {
-                    val rgb = h.toLongOrNull(16) ?: return null
-                    Color(
-                        red = ((rgb shr 16) and 0xFF) / 255f,
-                        green = ((rgb shr 8) and 0xFF) / 255f,
-                        blue = (rgb and 0xFF) / 255f
-                    )
-                }
-                8 -> {
-                    val rgba = h.toLongOrNull(16) ?: return null
-                    Color(
-                        red = ((rgba shr 24) and 0xFF) / 255f,
-                        green = ((rgba shr 16) and 0xFF) / 255f,
-                        blue = ((rgba shr 8) and 0xFF) / 255f,
-                        alpha = (rgba and 0xFF) / 255f
-                    )
-                }
-                else -> null
-            }
+            val c = parseHexColorFfi(hex) ?: return null
+            return Color(
+                red = c.r.toFloat(),
+                green = c.g.toFloat(),
+                blue = c.b.toFloat(),
+                alpha = c.a.toFloat()
+            )
         }
 
-        fun fontWeight(value: Float): FontWeight {
-            return when {
-                value < 200 -> FontWeight.Thin
-                value < 300 -> FontWeight.ExtraLight
-                value < 400 -> FontWeight.Light
-                value < 500 -> FontWeight.Normal
-                value < 600 -> FontWeight.Medium
-                value < 700 -> FontWeight.SemiBold
-                value < 800 -> FontWeight.Bold
-                value < 900 -> FontWeight.ExtraBold
-                else -> FontWeight.Black
-            }
+        /**
+         * Buckets come from jist-core; this `when` only maps the shared
+         * bucket onto Compose's platform weight enum.
+         */
+        fun fontWeight(value: Float): FontWeight = when (fontWeightBucketFfi(value.toDouble()).toInt()) {
+            100 -> FontWeight.Thin
+            200 -> FontWeight.ExtraLight
+            300 -> FontWeight.Light
+            400 -> FontWeight.Normal
+            500 -> FontWeight.Medium
+            600 -> FontWeight.SemiBold
+            700 -> FontWeight.Bold
+            800 -> FontWeight.ExtraBold
+            else -> FontWeight.Black
         }
     }
 }

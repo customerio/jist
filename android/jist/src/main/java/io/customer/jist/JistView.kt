@@ -4,8 +4,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
+import uniffi.jist_core.JistMode
 
 private const val SUPPORTED_VERSION = "1"
 
@@ -26,9 +25,9 @@ private const val SUPPORTED_VERSION = "1"
 fun JistView(
     name: String,
     templates: Map<String, List<JistTemplate>>,
-    data: Map<String, JsonElement>,
-    theme: JsonObject,
-    mode: JistMode = JistMode.Auto,
+    data: Map<String, JistValue>,
+    theme: Map<String, JistValue>,
+    mode: JistMode = JistMode.AUTO,
     formatDate: ((String, String) -> String)? = null,
     onAction: ((JistActionEvent) -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -43,9 +42,9 @@ fun JistView(
     val template = resolved[name] ?: return
 
     val isDark = when (mode) {
-        JistMode.Dark -> true
-        JistMode.Light -> false
-        JistMode.Auto -> isSystemInDarkTheme()
+        JistMode.DARK -> true
+        JistMode.LIGHT -> false
+        JistMode.AUTO -> isSystemInDarkTheme()
     }
 
     val resolver = remember(theme, isDark) { JistThemeResolver(theme, isDark) }
