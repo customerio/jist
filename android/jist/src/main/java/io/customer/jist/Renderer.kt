@@ -3,15 +3,21 @@ package io.customer.jist
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
@@ -20,34 +26,102 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import uniffi.jist_core.JistNode
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import androidx.compose.foundation.Image
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
-import java.time.format.FormatStyle
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 
 private const val MAX_TEMPLATE_DEPTH = 10
 
 private val LocalJistTextAlign = compositionLocalOf { TextAlign.Start }
 
-private fun tightTextStyle(fontSize: TextUnit, fontWeight: FontWeight, color: Color) = TextStyle(
+val LocalJistImageProvider = staticCompositionLocalOf<((String) -> ImageBitmap?)?> { null }
+
+// Keyed by raw fontFamily string from the theme; value is the resolved FontFamily.
+// staticCompositionLocalOf is used because this map only changes when the theme or JistTheme
+// fonts change — recomposition is never needed at the individual node level.
+internal val LocalJistFontCache = staticCompositionLocalOf<Map<String, FontFamily>> { emptyMap() }
+
+/**
+ * Walks the theme JSON collecting all fontFamily CSS stacks, then resolves each stack against
+ * [fonts] with case-insensitive name matching. Returns a map keyed by raw stack string so
+ * [LocalJistFontCache] lookups remain O(1) at render time.
+ *
+ * Resolution order within a stack mirrors CSS font-family: names are tried left to right;
+ * the first name that matches a key in [fonts] wins.
+ */
+internal fun buildFontCache(theme: Map<String, JistValue>, fonts: Map<String, FontFamily>): Map<String, FontFamily> {
+    if (fonts.isEmpty()) return emptyMap()
+    // Normalise keys once: lowercase, collapse whitespace.
+    val normalized = fonts.entries.associate { (k, v) -> k.trim().lowercase() to v }
+
+    val cache = mutableMapOf<String, FontFamily>()
+
+    fun resolve(stack: String): FontFamily? {
+        for (name in stack.split(",")) {
+            normalized[name.trim().lowercase()]?.let { return it }
+        }
+        return null
+    }
+
+    fun collect(value: JistValue) {
+        val obj = value.objectValue ?: return
+        obj.forEach { (key, child) ->
+            if (key == "fontFamily") {
+                child.stringValue
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { stack ->
+                        if (stack !in cache) {
+                            resolve(stack)?.let { cache[stack] = it }
+                        }
+                    }
+            } else {
+                collect(child)
+            }
+        }
+    }
+
+    theme.values.forEach(::collect)
+    return cache
+}
+
+private fun tightTextStyle(
+    fontSize: TextUnit,
+    fontWeight: FontWeight,
+    color: Color,
+    fontFamily: FontFamily? = null,
+    letterSpacing: TextUnit = TextUnit.Unspecified,
+    lineHeight: TextUnit = TextUnit.Unspecified
+) = TextStyle(
     fontSize = fontSize,
     fontWeight = fontWeight,
     color = color,
+    fontFamily = fontFamily,
+    letterSpacing = letterSpacing,
+    lineHeight = lineHeight,
     platformStyle = PlatformTextStyle(includeFontPadding = false),
     lineHeightStyle = LineHeightStyle(
         alignment = LineHeightStyle.Alignment.Proportional,
-        trim = LineHeightStyle.Trim.Both
+        trim = LineHeightStyle.Trim.None
     )
 )
 
@@ -126,11 +200,15 @@ private fun JistLayoutView(
             modifier = modifier.then(marginMod)
         ) {
             val needsWeight = effectiveJustify == null || effectiveJustify == "start"
+            val usesDistribution = effectiveJustify == "space-between" || effectiveJustify == "space-around" || effectiveJustify == "space-evenly"
+            val useBaseline = node.align == "baseline"
             node.children.forEach { child ->
-                val childMod = when {
+                val baseMod = when {
                     needsWeight && child is JistNode.Layout -> Modifier.weight(1f)
+                    usesDistribution && child is JistNode.Layout -> Modifier.width(IntrinsicSize.Max)
                     else -> Modifier
                 }
+                val childMod = if (useBaseline) baseMod.alignByBaseline() else baseMod
                 JistNodeView(child, data, resolver, formatDate, onAction, childMod, templates, templateDepth)
             }
         }
@@ -205,7 +283,7 @@ private fun JistActionView(
         modifier = modifier
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null
+                indication = LocalIndication.current
             ) {
                 onAction?.invoke(
                     JistActionEvent(
@@ -247,9 +325,27 @@ private fun JistHeadingView(
             fontWeight = JistThemeResolver.fontWeight(
                 resolver.resolveFloat("heading", variant, "text", "fontWeight", fallback = 600f)
             ),
-            color = resolver.resolveColor("heading", variant, "text", "color", fallback = Color.Black)
+            color = resolver.resolveColor("heading", variant, "text", "color", fallback = if (resolver.isDark) Color.White else Color.Black),
+            fontFamily = LocalJistFontCache.current[resolver.resolve("heading", variant, "text", "fontFamily")?.stringValue ?: ""],
+            letterSpacing = resolver.resolve("heading", variant, "text", "letterSpacing")?.numberValue?.toFloat()
+                ?.takeIf { it != 0f }?.sp ?: TextUnit.Unspecified,
+            lineHeight = resolver.resolve("heading", variant, "text", "lineHeight")?.numberValue?.toFloat()
+                ?.takeIf { it > 0f }?.let { TextUnit(it, TextUnitType.Em) } ?: TextUnit.Unspecified
         ),
-        modifier = modifier.semantics { heading() }
+        modifier = modifier
+            .padding(  // margin (outer)
+                start = resolver.resolveFloat("heading", variant, "margin", "left", fallback = 0f).dp,
+                top = resolver.resolveFloat("heading", variant, "margin", "top", fallback = 0f).dp,
+                end = resolver.resolveFloat("heading", variant, "margin", "right", fallback = 0f).dp,
+                bottom = resolver.resolveFloat("heading", variant, "margin", "bottom", fallback = 0f).dp
+            )
+            .padding(  // padding (inner)
+                start = resolver.resolveFloat("heading", variant, "padding", "left", fallback = 0f).dp,
+                top = resolver.resolveFloat("heading", variant, "padding", "top", fallback = 0f).dp,
+                end = resolver.resolveFloat("heading", variant, "padding", "right", fallback = 0f).dp,
+                bottom = resolver.resolveFloat("heading", variant, "padding", "bottom", fallback = 0f).dp
+            )
+            .semantics { heading() }
     )
 }
 
@@ -280,11 +376,28 @@ private fun JistTextView(
             fontWeight = JistThemeResolver.fontWeight(
                 resolver.resolveFloat("text", node.variant, "text", "fontWeight", fallback = 400f)
             ),
-            color = resolver.resolveColor("text", node.variant, "text", "color", fallback = Color.DarkGray)
+            color = resolver.resolveColor("text", node.variant, "text", "color", fallback = if (resolver.isDark) Color.White else Color.Black),
+            fontFamily = LocalJistFontCache.current[resolver.resolve("text", node.variant, "text", "fontFamily")?.stringValue ?: ""],
+            letterSpacing = resolver.resolve("text", node.variant, "text", "letterSpacing")?.numberValue?.toFloat()
+                ?.takeIf { it != 0f }?.sp ?: TextUnit.Unspecified,
+            lineHeight = resolver.resolve("text", node.variant, "text", "lineHeight")?.numberValue?.toFloat()
+                ?.takeIf { it > 0f }?.let { TextUnit(it, TextUnitType.Em) } ?: TextUnit.Unspecified
         ),
         maxLines = maxLines ?: Int.MAX_VALUE,
         overflow = TextOverflow.Ellipsis,
         modifier = modifier
+            .padding(  // margin (outer)
+                start = resolver.resolveFloat("text", node.variant, "margin", "left", fallback = 0f).dp,
+                top = resolver.resolveFloat("text", node.variant, "margin", "top", fallback = 0f).dp,
+                end = resolver.resolveFloat("text", node.variant, "margin", "right", fallback = 0f).dp,
+                bottom = resolver.resolveFloat("text", node.variant, "margin", "bottom", fallback = 0f).dp
+            )
+            .padding(  // padding (inner)
+                start = resolver.resolveFloat("text", node.variant, "padding", "left", fallback = 0f).dp,
+                top = resolver.resolveFloat("text", node.variant, "padding", "top", fallback = 0f).dp,
+                end = resolver.resolveFloat("text", node.variant, "padding", "right", fallback = 0f).dp,
+                bottom = resolver.resolveFloat("text", node.variant, "padding", "bottom", fallback = 0f).dp
+            )
     )
 }
 
@@ -315,20 +428,81 @@ private fun JistDateView(
             fontWeight = JistThemeResolver.fontWeight(
                 resolver.resolveFloat("date", node.variant, "text", "fontWeight", fallback = 400f)
             ),
-            color = resolver.resolveColor("date", node.variant, "text", "color", fallback = Color.Gray)
+            color = resolver.resolveColor("date", node.variant, "text", "color", fallback = if (resolver.isDark) Color.White else Color.Black),
+            fontFamily = LocalJistFontCache.current[resolver.resolve("date", node.variant, "text", "fontFamily")?.stringValue ?: ""],
+            letterSpacing = resolver.resolve("date", node.variant, "text", "letterSpacing")?.numberValue?.toFloat()
+                ?.takeIf { it != 0f }?.sp ?: TextUnit.Unspecified,
+            lineHeight = resolver.resolve("date", node.variant, "text", "lineHeight")?.numberValue?.toFloat()
+                ?.takeIf { it > 0f }?.let { TextUnit(it, TextUnitType.Em) } ?: TextUnit.Unspecified
         ),
         modifier = modifier
+            .padding(  // margin (outer)
+                start = resolver.resolveFloat("date", node.variant, "margin", "left", fallback = 0f).dp,
+                top = resolver.resolveFloat("date", node.variant, "margin", "top", fallback = 0f).dp,
+                end = resolver.resolveFloat("date", node.variant, "margin", "right", fallback = 0f).dp,
+                bottom = resolver.resolveFloat("date", node.variant, "margin", "bottom", fallback = 0f).dp
+            )
+            .padding(  // padding (inner)
+                start = resolver.resolveFloat("date", node.variant, "padding", "left", fallback = 0f).dp,
+                top = resolver.resolveFloat("date", node.variant, "padding", "top", fallback = 0f).dp,
+                end = resolver.resolveFloat("date", node.variant, "padding", "right", fallback = 0f).dp,
+                bottom = resolver.resolveFloat("date", node.variant, "padding", "bottom", fallback = 0f).dp
+            )
     )
 }
 
-private fun defaultFormatDate(iso: String): String {
-    return try {
-        val instant = Instant.parse(iso)
-        val date = instant.atZone(ZoneId.systemDefault()).toLocalDate()
-        date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
-    } catch (_: Exception) {
-        iso
+// SimpleDateFormat / DateFormat are relatively expensive to construct and are NOT thread-safe, so
+// we cache them per-thread and reuse them instead of allocating on every render. Date nodes are
+// formatted during composition (potentially many at once, e.g. while scrolling a list), so per-call
+// allocation would cause UI jank. `ThreadLocal.withInitial` is intentionally NOT used (it's a Java 8
+// default method that would re-introduce the core-library desugaring requirement); the classic
+// `initialValue()` override works on all API levels.
+
+/** Per-thread, reusable ISO-8601 parsers (UTC, with and without fractional seconds). */
+private val isoParserCache = object : ThreadLocal<List<SimpleDateFormat>>() {
+    override fun initialValue(): List<SimpleDateFormat> =
+        listOf("yyyy-MM-dd'T'HH:mm:ss.SSS", "yyyy-MM-dd'T'HH:mm:ss").map { pattern ->
+            SimpleDateFormat(pattern, Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+                isLenient = false
+            }
+        }
+}
+
+/** Per-thread, reusable localized output formatter, paired with the locale it was built for. */
+private val mediumDateFormatCache = object : ThreadLocal<Pair<Locale, DateFormat>>() {
+    override fun initialValue(): Pair<Locale, DateFormat> {
+        val locale = Locale.getDefault()
+        return locale to DateFormat.getDateInstance(DateFormat.MEDIUM, locale)
     }
+}
+
+/** Cached localized medium-date formatter, rebuilt only when the default locale changes. */
+private fun mediumDateFormat(): DateFormat {
+    val current = Locale.getDefault()
+    val cached = mediumDateFormatCache.get()
+    if (cached != null && cached.first == current) return cached.second
+    val rebuilt = current to DateFormat.getDateInstance(DateFormat.MEDIUM, current)
+    mediumDateFormatCache.set(rebuilt)
+    return rebuilt.second
+}
+
+private fun defaultFormatDate(iso: String): String {
+    // Parse the ISO-8601 instant (UTC, optional fractional seconds) without the newer date/time
+    // APIs so consumers don't need Android core-library desugaring. Normalize the trailing "Z" away
+    // and parse as UTC, then format as a localized medium-style date in the default locale, reusing
+    // the cached (per-thread) formatters above to avoid per-render allocation.
+    val parsers = isoParserCache.get() ?: return iso
+    val normalized = iso.trim().removeSuffix("Z")
+    for (parser in parsers) {
+        try {
+            val date = parser.parse(normalized) ?: continue
+            return mediumDateFormat().format(date)
+        } catch (_: Exception) {
+            // Try the next pattern.
+        }
+    }
+    return iso
 }
 
 // MARK: - Button
@@ -343,24 +517,66 @@ private fun JistButtonView(
 ) {
     val buttonData = data[node.name]?.objectValue ?: return
     val label = buttonData["label"]?.stringValue ?: return
+    val isDisabled = buttonData["disabled"]?.boolValue ?: false
 
-    val bgColor = resolver.resolveColor("button", node.variant, "background", "color", fallback = Color(0xFF4F46E5))
-    val textColor = resolver.resolveColor("button", node.variant, "text", "color", fallback = Color.White)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val isHovered by interactionSource.collectIsHoveredAsState()
+
+    val state: String? = when {
+        isDisabled -> "disabled"
+        isPressed -> "active"
+        isHovered -> "hover"
+        else -> null
+    }
+
+    val bgColor = resolver.resolveColor("button", node.variant, "background", "color", state = state, fallback = Color(0xFF4F46E5))
+    val textColor = resolver.resolveColor("button", node.variant, "text", "color", state = state, fallback = Color.White)
     val radius = resolver.resolveFloat("button", node.variant, "border", "radius", fallback = 6f)
     val borderWidth = resolver.resolveFloat("button", node.variant, "border", "width", fallback = 0f)
-    val borderColor = resolver.resolveColor("button", node.variant, "border", "color", fallback = Color.Transparent)
+    val borderColor = resolver.resolveColor("button", node.variant, "border", "color", state = state, fallback = Color.Transparent)
+    val minW = resolver.resolveFloat("button", node.variant, "minWidth", fallback = 0f)
+    val minH = resolver.resolveFloat("button", node.variant, "minHeight", fallback = 0f)
+    val shadowBlur = resolver.resolveFloat("button", node.variant, "shadow", "blur", fallback = 0f)
+    val shadowColor = resolver.resolveColor("button", node.variant, "shadow", "color", state = state, fallback = Color.Transparent)
     val shape = RoundedCornerShape(radius.dp)
 
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
+            .padding(  // margin (outer)
+                start = resolver.resolveFloat("button", node.variant, "margin", "left", fallback = 0f).dp,
+                top = resolver.resolveFloat("button", node.variant, "margin", "top", fallback = 0f).dp,
+                end = resolver.resolveFloat("button", node.variant, "margin", "right", fallback = 0f).dp,
+                bottom = resolver.resolveFloat("button", node.variant, "margin", "bottom", fallback = 0f).dp
+            )
+            .then(
+                if (minW > 0 || minH > 0) Modifier.sizeIn(
+                    minWidth = if (minW > 0) minW.dp else Dp.Unspecified,
+                    minHeight = if (minH > 0) minH.dp else Dp.Unspecified
+                ) else Modifier
+            )
+            .then(
+                if (shadowBlur > 0) Modifier.shadow(
+                    elevation = shadowBlur.dp,
+                    shape = shape,
+                    ambientColor = shadowColor,
+                    spotColor = shadowColor
+                ) else Modifier
+            )
             .clip(shape)
             .background(bgColor)
             .then(
                 if (borderWidth > 0) Modifier.border(borderWidth.dp, borderColor, shape)
                 else Modifier
             )
-            .clickable {
+            .hoverable(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = !isDisabled,
+                role = Role.Button
+            ) {
                 onAction?.invoke(
                     JistActionEvent(
                         component = "button",
@@ -376,16 +592,21 @@ private fun JistButtonView(
                 end = resolver.resolveFloat("button", node.variant, "padding", "right", fallback = 16f).dp,
                 bottom = resolver.resolveFloat("button", node.variant, "padding", "bottom", fallback = 8f).dp
             )
-            .semantics { role = Role.Button }
     ) {
         Text(
             text = label,
+            softWrap = false,
             style = tightTextStyle(
-                fontSize = resolver.resolveFloat("button", node.variant, "text", "fontSize", fallback = 14f).sp,
+                fontSize = resolver.resolveFloat("button", node.variant, "text", "fontSize", state = state, fallback = 14f).sp,
                 fontWeight = JistThemeResolver.fontWeight(
-                    resolver.resolveFloat("button", node.variant, "text", "fontWeight", fallback = 500f)
+                    resolver.resolveFloat("button", node.variant, "text", "fontWeight", state = state, fallback = 500f)
                 ),
-                color = textColor
+                color = textColor,
+                fontFamily = LocalJistFontCache.current[resolver.resolve("button", node.variant, "text", "fontFamily", state = state)?.stringValue ?: ""],
+                letterSpacing = resolver.resolve("button", node.variant, "text", "letterSpacing", state = state)?.numberValue?.toFloat()
+                    ?.takeIf { it != 0f }?.sp ?: TextUnit.Unspecified,
+                lineHeight = resolver.resolve("button", node.variant, "text", "lineHeight", state = state)?.numberValue?.toFloat()
+                    ?.takeIf { it > 0f }?.let { TextUnit(it, TextUnitType.Em) } ?: TextUnit.Unspecified
             )
         )
     }
@@ -471,16 +692,43 @@ private fun JistImageView(
         else -> ContentScale.Fit
     }
 
-    var imageMod = modifier
+    val themeRadius = resolver.resolveFloat("image", node.variant, "border", "radius", fallback = 0f)
+    val radius = node.borderRadius?.toFloat() ?: themeRadius
+
+    val hasFixedWidth = node.widthValue != null
+    var imageMod = (if (hasFixedWidth) Modifier else modifier)
+        .padding(  // margin (outer)
+            start = resolver.resolveFloat("image", node.variant, "margin", "left", fallback = 0f).dp,
+            top = resolver.resolveFloat("image", node.variant, "margin", "top", fallback = 0f).dp,
+            end = resolver.resolveFloat("image", node.variant, "margin", "right", fallback = 0f).dp,
+            bottom = resolver.resolveFloat("image", node.variant, "margin", "bottom", fallback = 0f).dp
+        )
+        .padding(  // padding (constrains image inside)
+            start = resolver.resolveFloat("image", node.variant, "padding", "left", fallback = 0f).dp,
+            top = resolver.resolveFloat("image", node.variant, "padding", "top", fallback = 0f).dp,
+            end = resolver.resolveFloat("image", node.variant, "padding", "right", fallback = 0f).dp,
+            bottom = resolver.resolveFloat("image", node.variant, "padding", "bottom", fallback = 0f).dp
+        )
     if (node.isFillWidth) imageMod = imageMod.fillMaxWidth()
     node.widthValue?.let { imageMod = imageMod.requiredWidth(it.dp) }
     node.height?.let { imageMod = imageMod.height(it.dp) }
-    imageMod = imageMod.clip(RoundedCornerShape((node.borderRadius ?: 0.0).dp))
+    imageMod = imageMod.clip(RoundedCornerShape(radius.dp))
 
-    AsyncImage(
-        model = url,
-        contentDescription = altText,
-        contentScale = contentScale,
-        modifier = imageMod
-    )
+    val imageProvider = LocalJistImageProvider.current
+    val bitmap = imageProvider?.invoke(url)
+    if (bitmap != null) {
+        Image(
+            painter = BitmapPainter(bitmap),
+            contentDescription = altText,
+            contentScale = contentScale,
+            modifier = imageMod
+        )
+    } else {
+        AsyncImage(
+            model = url,
+            contentDescription = altText,
+            contentScale = contentScale,
+            modifier = imageMod
+        )
+    }
 }

@@ -1,5 +1,6 @@
 import XCTest
 import SwiftUI
+import CoreText
 import Jist
 import SnapshotTesting
 
@@ -9,6 +10,7 @@ import AppKit
 import UIKit
 #endif
 
+@MainActor
 final class JistSnapshotTests: XCTestCase {
 
     private var templates: [String: [JistTemplate]]!
@@ -20,11 +22,23 @@ final class JistSnapshotTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
+        Self.registerFonts()
         templates = TestFixtures.loadTemplates()
         dataMap = TestFixtures.loadData()
         theme = TestFixtures.loadTheme()
         // Uncomment to record new reference snapshots, then set back to false.
         // isRecording = true
+    }
+
+    /// Registers all bundled font files with Core Text so UIFont/NSFont can resolve them
+    /// by family name — the same path used by JistThemeResolver at runtime.
+    /// Safe to call multiple times; CTFontManagerRegisterFontsForURL is idempotent.
+    private static func registerFonts() {
+        let extensions = ["ttf", "otf"]
+        guard let urls = Bundle.module.urls(forResourcesWithExtension: nil, subdirectory: nil) else { return }
+        for url in urls where extensions.contains(url.pathExtension.lowercased()) {
+            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        }
     }
 
     // MARK: - Light Mode
@@ -55,6 +69,14 @@ final class JistSnapshotTests: XCTestCase {
 
     func testProfileLight() {
         assertTemplateSnapshot("profile", mode: .light)
+    }
+
+    func testStatsLight() {
+        assertTemplateSnapshot("stats", mode: .light)
+    }
+
+    func testCardLight() {
+        assertTemplateSnapshot("card", mode: .light)
     }
 
     func testAnnouncementLight() {
@@ -89,6 +111,14 @@ final class JistSnapshotTests: XCTestCase {
 
     func testProfileDark() {
         assertTemplateSnapshot("profile", mode: .dark)
+    }
+
+    func testStatsDark() {
+        assertTemplateSnapshot("stats", mode: .dark)
+    }
+
+    func testCardDark() {
+        assertTemplateSnapshot("card", mode: .dark)
     }
 
     func testAnnouncementDark() {
@@ -137,6 +167,17 @@ final class JistSnapshotTests: XCTestCase {
     /// 96x96 indigo placeholder for the avatar image
     private static let avatarPlaceholder = createPlaceholderPNG(width: 96, height: 96, hex: "#c7d2fe")
 
+    private static func loadLocalImage(_ url: URL) -> Image? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        #if os(macOS)
+        guard let nsImage = NSImage(data: data) else { return nil }
+        return Image(nsImage: nsImage)
+        #else
+        guard let uiImage = UIImage(data: data) else { return nil }
+        return Image(uiImage: uiImage)
+        #endif
+    }
+
     /// Replaces remote image URLs in test data with local placeholder file URLs.
     private func withPlaceholderImages(_ data: [String: JistValue]) -> [String: JistValue] {
         var result = data
@@ -146,6 +187,9 @@ final class JistSnapshotTests: XCTestCase {
         if result["avatar"] != nil {
             result["avatar"] = .string(Self.avatarPlaceholder.absoluteString)
         }
+        if result["icon"] != nil {
+            result["icon"] = .string(Self.avatarPlaceholder.absoluteString)
+        }
         return result
     }
 
@@ -154,7 +198,7 @@ final class JistSnapshotTests: XCTestCase {
     private func assertTemplateSnapshot(
         _ key: String,
         mode: JistMode,
-        file: StaticString = #file,
+        file: StaticString = #filePath,
         testName: String = #function,
         line: UInt = #line
     ) {
@@ -183,13 +227,12 @@ final class JistSnapshotTests: XCTestCase {
         .padding()
         .background(mode == .dark ? Color.black : Color.white)
         .environment(\.colorScheme, colorScheme)
+        .environment(\.jistImageProvider, Self.loadLocalImage)
 
         #if os(macOS)
         let hostingView = NSHostingView(rootView: view)
         hostingView.frame = NSRect(x: 0, y: 0, width: 390, height: 600)
 
-        // AsyncImage requires the view to be in a live window hierarchy
-        // for SwiftUI to process async loads.
         let window = NSWindow(
             contentRect: NSRect(x: -10000, y: -10000, width: 390, height: 600),
             styleMask: [.borderless],
@@ -200,15 +243,10 @@ final class JistSnapshotTests: XCTestCase {
         window.contentView = hostingView
         window.orderBack(nil)
 
-        // Let AsyncImage load the local placeholder files
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 1.0))
-
-        // Re-layout now that images have loaded
         let fittingSize = hostingView.fittingSize
         let finalSize = NSSize(width: 390, height: max(fittingSize.height, 100))
         hostingView.frame.size = finalSize
 
-        // Render to a 1x bitmap so snapshots are identical on Retina and non-Retina displays.
         let image = renderViewAt1x(hostingView, size: finalSize)
 
         assertSnapshot(
@@ -225,9 +263,6 @@ final class JistSnapshotTests: XCTestCase {
         let viewController = UIHostingController(rootView: view)
         viewController.view.frame = CGRect(x: 0, y: 0, width: 390, height: 0)
         viewController.view.backgroundColor = mode == .dark ? .black : .white
-
-        // Let AsyncImage load the local placeholder files
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 1.0))
 
         let fittingSize = viewController.view.systemLayoutSizeFitting(
             CGSize(width: 390, height: UIView.layoutFittingCompressedSize.height),

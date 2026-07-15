@@ -826,6 +826,14 @@ internal interface UniffiLib : Library {
         uniffi_out_err: UniffiRustCallStatus,
     ): Double
 
+    fun uniffi_jist_core_fn_method_themeresolver_resolve_property(
+        `ptr`: Pointer,
+        `typeName`: RustBuffer.ByValue,
+        `variant`: RustBuffer.ByValue,
+        `property`: RustBuffer.ByValue,
+        uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+
     fun uniffi_jist_core_fn_method_themeresolver_resolve_string(
         `ptr`: Pointer,
         `typeName`: RustBuffer.ByValue,
@@ -1099,6 +1107,8 @@ internal interface UniffiLib : Library {
 
     fun uniffi_jist_core_checksum_method_themeresolver_resolve_number(): Short
 
+    fun uniffi_jist_core_checksum_method_themeresolver_resolve_property(): Short
+
     fun uniffi_jist_core_checksum_method_themeresolver_resolve_string(): Short
 
     fun uniffi_jist_core_checksum_constructor_themeresolver_new(): Short
@@ -1146,6 +1156,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_jist_core_checksum_method_themeresolver_resolve_number() != 63022.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_jist_core_checksum_method_themeresolver_resolve_property() != 18521.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_jist_core_checksum_method_themeresolver_resolve_string() != 57706.toShort()) {
@@ -1566,6 +1579,17 @@ public interface ThemeResolverInterface {
     ): kotlin.Double
 
     /**
+     * Resolve a *group-less* theme property (e.g. `button.minWidth`,
+     * `text.fontFamily` at the type level). Same dark/variant cascade as
+     * [`Self::resolve`] but with paths of the form `type.variant.property`.
+     */
+    fun `resolveProperty`(
+        `typeName`: kotlin.String,
+        `variant`: kotlin.String?,
+        `property`: kotlin.String,
+    ): JistValue?
+
+    /**
      * Resolve a string-valued property (e.g. a hex color literal).
      */
     fun `resolveString`(
@@ -1777,6 +1801,30 @@ open class ThemeResolver :
                         FfiConverterString.lower(`property`),
                         FfiConverterOptionalString.lower(`state`),
                         FfiConverterDouble.lower(`fallback`),
+                        _status,
+                    )
+                }
+            },
+        )
+
+    /**
+     * Resolve a *group-less* theme property (e.g. `button.minWidth`,
+     * `text.fontFamily` at the type level). Same dark/variant cascade as
+     * [`Self::resolve`] but with paths of the form `type.variant.property`.
+     */
+    override fun `resolveProperty`(
+        `typeName`: kotlin.String,
+        `variant`: kotlin.String?,
+        `property`: kotlin.String,
+    ): JistValue? =
+        FfiConverterOptionalTypeJistValue.lift(
+            callWithPointer {
+                uniffiRustCall { _status ->
+                    UniffiLib.INSTANCE.uniffi_jist_core_fn_method_themeresolver_resolve_property(
+                        it,
+                        FfiConverterString.lower(`typeName`),
+                        FfiConverterOptionalString.lower(`variant`),
+                        FfiConverterString.lower(`property`),
                         _status,
                     )
                 }

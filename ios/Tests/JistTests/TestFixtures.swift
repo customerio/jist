@@ -10,7 +10,7 @@ enum TestFixtures {
 
     /// Path to the shared fixtures directory, resolved relative to this source file.
     private static let sharedDir: URL = {
-        URL(fileURLWithPath: #file)
+        URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent() // JistTests
             .deletingLastPathComponent() // Tests
             .deletingLastPathComponent() // ios
@@ -31,7 +31,7 @@ enum TestFixtures {
     // MARK: - Templates
 
     /// Template keys to test (excludes liveActivity).
-    static let templateKeys = ["basic", "image", "cta", "action", "hero", "inbox", "profile", "announcement"]
+    static let templateKeys = ["basic", "image", "cta", "action", "hero", "inbox", "profile", "stats", "card", "announcement"]
 
     /// Parses `templates.json` through jist-core and returns versioned
     /// template arrays keyed by name.

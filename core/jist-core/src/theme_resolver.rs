@@ -141,6 +141,37 @@ impl ThemeResolver {
         self.dig(&[t, g, p])
     }
 
+    /// Resolve a *group-less* theme property (e.g. `button.minWidth`,
+    /// `text.fontFamily` at the type level). Same dark/variant cascade as
+    /// [`Self::resolve`] but with paths of the form `type.variant.property`.
+    pub fn resolve_property(
+        &self,
+        type_name: String,
+        variant: Option<String>,
+        property: String,
+    ) -> Option<JistValue> {
+        let t = type_name.as_str();
+        let p = property.as_str();
+        let v = variant.as_deref();
+
+        if self.is_dark {
+            if let Some(var) = v {
+                if let Some(val) = self.dig(&["modes", "dark", t, var, p]) {
+                    return Some(val);
+                }
+            }
+            if let Some(val) = self.dig(&["modes", "dark", t, p]) {
+                return Some(val);
+            }
+        }
+        if let Some(var) = v {
+            if let Some(val) = self.dig(&[t, var, p]) {
+                return Some(val);
+            }
+        }
+        self.dig(&[t, p])
+    }
+
     /// Resolve a string-valued property (e.g. a hex color literal).
     pub fn resolve_string(
         &self,
@@ -338,6 +369,33 @@ mod tests {
             light.resolve_string("button".into(), None, "background".into(), "color".into(), None),
             Some("#111111".into())
         );
+    }
+
+    #[test]
+    fn group_less_property_cascade() {
+        let theme: HashMap<String, JistValue> = parse_data(
+            r##"{
+                "button": {
+                    "minWidth": 44,
+                    "primary": {"minWidth": 60}
+                },
+                "modes": {"dark": {"button": {"minWidth": 48}}}
+            }"##,
+        )
+        .unwrap();
+        let light = ThemeResolver::new(theme.clone(), false);
+        let dark = ThemeResolver::new(theme, true);
+        let get = |r: &ThemeResolver, v: Option<&str>| {
+            r.resolve_property("button".into(), v.map(Into::into), "minWidth".into())
+                .and_then(|x| x.as_f64())
+        };
+        assert_eq!(get(&light, None), Some(44.0));
+        assert_eq!(get(&light, Some("primary")), Some(60.0));
+        assert_eq!(get(&dark, None), Some(48.0));
+        // dark + variant: no dark-variant override → dark *base* wins before
+        // the light variant is consulted (dark variant → dark base → light
+        // variant → light base), matching the platform resolvers.
+        assert_eq!(get(&dark, Some("primary")), Some(48.0));
     }
 
     #[test]

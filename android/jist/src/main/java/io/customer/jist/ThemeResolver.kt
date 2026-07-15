@@ -8,13 +8,14 @@ import uniffi.jist_core.parseHexColorFfi
 /**
  * Thin Compose adapter over the jist-core (Rust) `ThemeResolver`.
  *
- * The cascade (state → dark → variant → base), hex-color parsing, and
- * font-weight bucketing all live in core/jist-core/src/theme_resolver.rs —
- * shared with iOS. This file only maps Rust results onto Compose types.
+ * The cascades (state → dark → variant → base, both grouped and group-less),
+ * hex-color parsing, and font-weight bucketing all live in
+ * core/jist-core/src/theme_resolver.rs — shared with iOS. This file only maps
+ * Rust results onto Compose types.
  */
 class JistThemeResolver(
     theme: Map<String, JistValue>,
-    isDark: Boolean
+    val isDark: Boolean
 ) {
     private val core = uniffi.jist_core.ThemeResolver(theme, isDark)
 
@@ -25,6 +26,13 @@ class JistThemeResolver(
         property: String,
         state: String? = null
     ): JistValue? = core.resolve(type, variant, group, property, state)
+
+    /** Group-less variant: resolves `type.variant.property` (e.g. `button.minWidth`). */
+    fun resolve(
+        type: String,
+        variant: String? = null,
+        property: String
+    ): JistValue? = core.resolveProperty(type, variant, property)
 
     fun resolveColor(
         type: String,
@@ -51,6 +59,14 @@ class JistThemeResolver(
         state: String? = null,
         fallback: Float
     ): Float = core.resolveNumber(type, variant, group, property, state, fallback.toDouble()).toFloat()
+
+    /** Group-less variant of resolveFloat (e.g. `button.minWidth`). */
+    fun resolveFloat(
+        type: String,
+        variant: String? = null,
+        property: String,
+        fallback: Float
+    ): Float = resolve(type, variant, property)?.numberValue?.toFloat() ?: fallback
 
     fun resolveInt(
         type: String,

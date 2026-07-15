@@ -536,6 +536,13 @@ public protocol ThemeResolverProtocol: AnyObject {
     func resolveNumber(typeName: String, variant: String?, group: String, property: String, state: String?, fallback: Double) -> Double
 
     /**
+     * Resolve a *group-less* theme property (e.g. `button.minWidth`,
+     * `text.fontFamily` at the type level). Same dark/variant cascade as
+     * [`Self::resolve`] but with paths of the form `type.variant.property`.
+     */
+    func resolveProperty(typeName: String, variant: String?, property: String) -> JistValue?
+
+    /**
      * Resolve a string-valued property (e.g. a hex color literal).
      */
     func resolveString(typeName: String, variant: String?, group: String, property: String, state: String?) -> String?
@@ -658,6 +665,20 @@ open class ThemeResolver:
                                                                     FfiConverterString.lower(property),
                                                                     FfiConverterOptionString.lower(state),
                                                                     FfiConverterDouble.lower(fallback), $0)
+        })
+    }
+
+    /**
+     * Resolve a *group-less* theme property (e.g. `button.minWidth`,
+     * `text.fontFamily` at the type level). Same dark/variant cascade as
+     * [`Self::resolve`] but with paths of the form `type.variant.property`.
+     */
+    open func resolveProperty(typeName: String, variant: String?, property: String) -> JistValue? {
+        return try! FfiConverterOptionTypeJistValue.lift(try! rustCall {
+            uniffi_jist_core_fn_method_themeresolver_resolve_property(self.uniffiClonePointer(),
+                                                                      FfiConverterString.lower(typeName),
+                                                                      FfiConverterOptionString.lower(variant),
+                                                                      FfiConverterString.lower(property), $0)
         })
     }
 
@@ -2511,7 +2532,7 @@ private enum InitializationResult {
 
 /// Use a global variable to perform the versioning checks. Swift ensures that
 /// the code inside is only computed once.
-private var initializationResult: InitializationResult = {
+nonisolated(unsafe) private var initializationResult: InitializationResult = {
     // Get the bindings contract version from our ComponentInterface
     let bindings_contract_version = 26
     // Get the scaffolding contract version by calling the into the dylib
@@ -2547,6 +2568,9 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_jist_core_checksum_method_themeresolver_resolve_number() != 63022 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_jist_core_checksum_method_themeresolver_resolve_property() != 18521 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_jist_core_checksum_method_themeresolver_resolve_string() != 57706 {

@@ -42,3 +42,10 @@ public extension JistDynamicLayoutNode {
     /// one-element array purely for FFI reasons; see the Rust model.)
     var templateNode: JistNode? { template.first }
 }
+
+public extension JistNode {
+    var isLayout: Bool {
+        if case .layout = self { return true }
+        return false
+    }
+}

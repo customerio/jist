@@ -13,16 +13,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import io.customer.jist.JistActionEvent
+import io.customer.jist.JistMode
 import io.customer.jist.JistTemplate
+import io.customer.jist.JistTheme
 import io.customer.jist.JistValue
 import io.customer.jist.JistView
 import io.customer.jist.objectValue
-import uniffi.jist_core.JistMode
 import uniffi.jist_core.parseDataJson
 import uniffi.jist_core.parseRegistryJson
 import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+
+private val abrilFatface = FontFamily(Font(R.font.abril_fatface, FontWeight.Normal))
+private val dmSans = FontFamily(
+    Font(R.font.dm_sans_regular, FontWeight.Normal),
+    Font(R.font.dm_sans_medium, FontWeight.Medium),
+    Font(R.font.dm_sans_semibold, FontWeight.SemiBold),
+    Font(R.font.dm_sans_bold, FontWeight.Bold),
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,7 +45,9 @@ class MainActivity : ComponentActivity() {
         val theme = loadTheme()
 
         setContent {
-            ExampleScreen(templates, dataEntries, theme)
+            JistTheme(fonts = mapOf("Abril Fatface" to abrilFatface, "DM Sans" to dmSans)) {
+                ExampleScreen(templates, dataEntries, theme)
+            }
         }
     }
 
@@ -64,7 +78,7 @@ fun ExampleScreen(
 ) {
     var isDarkMode by remember { mutableStateOf(false) }
     val actionLog = remember { mutableStateListOf<String>() }
-    val templateOrder = listOf("basic", "image", "cta", "action", "hero", "inbox", "profile", "announcement")
+    val templateOrder = listOf("basic", "image", "cta", "action", "hero", "inbox", "profile", "stats", "card", "announcement")
 
     val colorScheme = if (isDarkMode) darkColorScheme() else lightColorScheme()
 

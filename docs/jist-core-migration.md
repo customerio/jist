@@ -1,6 +1,6 @@
 # Jist Core Migration — Shared Rust Core via UniFFI
 
-**Status:** Core migration complete on all three platforms (2026-07-15). Models, parsing, JSON value type, and the theme resolver live in `jist-core` (Rust); iOS/Android/Web consume generated bindings. All four test suites green. Remaining: FontResolver growth (PR 5), validator (PR 6), CI + distribution packaging.
+**Status:** Core migration complete on all three platforms and **integrated with current main** (2026-07-15). Models, parsing, JSON value type, and the theme resolver (grouped + group-less cascades, states, hex, weight buckets) live in `jist-core` (Rust); iOS/Android/Web consume generated bindings. The ~100-commit merge with main (button states, custom fonts, min/max width, root container types, register() API, packaging) is resolved and all four suites pass against main's baselines: Rust 24/24; iOS 21 test methods / 71 snapshots byte-identical to pure-main rendering; Android 22 test methods / 68 committed golden PNGs; Web 62/62. Remaining: validator (PR 6), CI + distribution packaging, wasm/so size trim.
 **Branch:** `feat/jist-core-migration`
 **Owner:** TBD
 

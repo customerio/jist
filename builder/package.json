@@ -5,10 +5,10 @@
   "scripts": {
     "sync": "bash scripts/sync-shared.sh",
     "predev": "npm run sync",
-    "dev": "next dev",
+    "dev": "next dev --port 4747",
     "prebuild": "npm run sync",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --port 4747",
     "lint": "eslint"
   },
   "dependencies": {

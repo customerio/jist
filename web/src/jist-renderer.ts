@@ -41,6 +41,7 @@ export type {
 export interface JistButtonData {
   label: string;
   url: string;
+  disabled?: boolean;
 }
 
 export type JistData = Record<string, unknown>;
@@ -265,6 +266,7 @@ export default class JistRenderer {
     const el = document.createElement("button");
     this.#applyClasses(el, "button", name, node.variant);
     el.textContent = buttonData.label;
+    if (buttonData.disabled) el.disabled = true;
     const meta = node.meta || null;
     el.addEventListener("click", (e: Event) => {
       e.stopPropagation();
@@ -287,15 +289,22 @@ export default class JistRenderer {
     const name = node.name || "image";
     const src = data[name] as string | undefined;
     if (!src) return null;
+
+    const wrapper = document.createElement("div");
+    this.#applyClasses(wrapper, "image", name, node.variant);
+    wrapper.style.overflow = "hidden";
+
     const el = document.createElement("img");
-    this.#applyClasses(el, "image", name, node.variant);
     el.src = src;
     el.alt = (data.title as string) || "";
+    el.style.display = "block";
     if (node.width) el.style.width = px(node.width);
     if (node.height) el.style.height = px(node.height);
     if (node.objectFit) el.style.objectFit = node.objectFit;
     if (node.borderRadius) el.style.borderRadius = px(node.borderRadius);
-    return el;
+
+    wrapper.appendChild(el);
+    return wrapper;
   }
 
   // ── Dynamic Layout (repeating container) ───

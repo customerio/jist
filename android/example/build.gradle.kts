@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("app.cash.paparazzi")
 }
 
 android {
@@ -10,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "io.customer.jist.example"
-        minSdk = 24
+        minSdk = 21
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -25,6 +26,23 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    sourceSets {
+        getByName("test") {
+            resources.srcDir("../../shared")
+        }
+    }
+}
+
+val copySharedResources by tasks.registering(Copy::class) {
+    from("../../shared") {
+        include("*.json")
+    }
+    into("src/main/res/raw")
+}
+
+tasks.named("preBuild") {
+    dependsOn(copySharedResources)
 }
 
 dependencies {
@@ -34,4 +52,16 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.activity:activity-compose:1.9.3")
+    // Plain JNA JAR for local JVM (Paparazzi) tests; the AAR variant comes
+    // in transitively from :jist for device builds.
+    testImplementation("net.java.dev.jna:jna:5.15.0")
+    // Test-only JSON tooling for slicing shared/tests fixtures. Everything
+    // handed to the renderer is parsed by jist-core (Rust).
+    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+}
+
+// JVM tests (Paparazzi) load the host build of jist-core; build it with
+// `cargo build` in core/ first (see core/build-all.sh).
+tasks.withType<Test>().configureEach {
+    systemProperty("jna.library.path", "${rootDir}/../core/target/debug")
 }

@@ -7,6 +7,7 @@ __pycache__/
 .build/
 build/
 dist/
+web/src/jist-css.ts
 DerivedData/
 
 # iOS
@@ -26,9 +27,15 @@ android/example/src/main/res/raw/*.json
 # Rust native libs staged for the AAR (built via cargo-ndk; see core/build-all.sh)
 android/jist/src/main/jniLibs/
 
+# Test artifacts
+web/test-results/
+
 # IDE
 .idea/
 *.swp
 *~
 .vscode/
 .DS_Store
+
+# Local Claude Code config
+.claude/settings.local.json

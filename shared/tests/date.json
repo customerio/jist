@@ -1,0 +1,49 @@
+{
+  "required": {
+    "node": { "type": "date", "name": "timestamp" },
+    "data": { "timestamp": "2026-04-01T12:00:00Z" },
+    "theme": {}
+  },
+  "all-properties": {
+    "node": { "type": "date", "name": "timestamp" },
+    "data": { "timestamp": "2026-04-01T12:00:00Z" },
+    "theme": {
+      "date": {
+        "text": { "fontSize": 16, "fontWeight": 600, "color": "#0369A1", "lineHeight": 1.6, "letterSpacing": 1.5 },
+        "padding": { "top": 6, "right": 10, "bottom": 6, "left": 10 },
+        "margin": { "top": 4, "right": 4, "bottom": 8, "left": 4 }
+      },
+      "modes": {
+        "dark": {
+          "date": {
+            "text": { "color": "#7DD3FC" }
+          }
+        }
+      }
+    }
+  },
+  "variant": {
+    "node": { "type": "date", "name": "timestamp", "variant": "relative" },
+    "data": { "timestamp": "2026-04-01T12:00:00Z" },
+    "theme": {
+      "date": {
+        "text": { "fontSize": 14, "fontWeight": 500, "color": "#374151" },
+        "padding": { "bottom": 4 },
+        "relative": {
+          "text": { "fontSize": 11, "color": "#D97706" },
+          "margin": { "top": 2 }
+        }
+      },
+      "modes": {
+        "dark": {
+          "date": {
+            "text": { "color": "#D1D5DB" },
+            "relative": {
+              "text": { "color": "#FBBF24" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

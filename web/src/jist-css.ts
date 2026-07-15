@@ -1,0 +1,188 @@
+export default `/* ═══════════════════════════════════════════
+   Jist Template Styles
+   ═══════════════════════════════════════════ */
+
+/* ── Host Element ───────────────────────── */
+
+jist-template {
+  display: block;
+}
+
+/* ── Base Reset ─────────────────────────── */
+
+.jist__heading,
+.jist__text,
+.jist__date {
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Heading ────────────────────────────── */
+
+.jist__heading {
+  font-size: var(--jist-heading-text-font-size, 16px);
+  font-weight: var(--jist-heading-text-font-weight, 600);
+  color: var(--jist-heading-text-color, #000000);
+  font-family: var(--jist-heading-text-font-family, inherit);
+  line-height: var(--jist-heading-text-line-height, 1.3);
+  letter-spacing: var(--jist-heading-text-letter-spacing, normal);
+  padding-top: var(--jist-heading-padding-top, 0);
+  padding-right: var(--jist-heading-padding-right, 0);
+  padding-bottom: var(--jist-heading-padding-bottom, 0);
+  padding-left: var(--jist-heading-padding-left, 0);
+  margin-top: var(--jist-heading-margin-top, 0);
+  margin-right: var(--jist-heading-margin-right, 0);
+  margin-bottom: var(--jist-heading-margin-bottom, 0);
+  margin-left: var(--jist-heading-margin-left, 0);
+  /* Line clamping — active when --jist-heading-text-max-lines is set */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--jist-heading-text-max-lines, none);
+  overflow: hidden;
+}
+
+/* ── Text ───────────────────────────────── */
+
+.jist__text {
+  font-size: var(--jist-text-text-font-size, 14px);
+  font-weight: var(--jist-text-text-font-weight, 400);
+  color: var(--jist-text-text-color, #000000);
+  font-family: var(--jist-text-text-font-family, inherit);
+  line-height: var(--jist-text-text-line-height, 1.5);
+  letter-spacing: var(--jist-text-text-letter-spacing, normal);
+  padding-top: var(--jist-text-padding-top, 0);
+  padding-right: var(--jist-text-padding-right, 0);
+  padding-bottom: var(--jist-text-padding-bottom, 0);
+  padding-left: var(--jist-text-padding-left, 0);
+  margin-top: var(--jist-text-margin-top, 0);
+  margin-right: var(--jist-text-margin-right, 0);
+  margin-bottom: var(--jist-text-margin-bottom, 0);
+  margin-left: var(--jist-text-margin-left, 0);
+  /* Line clamping — active when --jist-text-text-max-lines is set */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--jist-text-text-max-lines, none);
+  overflow: hidden;
+}
+
+/* ── Date ───────────────────────────────── */
+
+.jist__date {
+  font-size: var(--jist-date-text-font-size, 12px);
+  font-weight: var(--jist-date-text-font-weight, 400);
+  color: var(--jist-date-text-color, #000000);
+  font-family: var(--jist-date-text-font-family, inherit);
+  line-height: var(--jist-date-text-line-height, 1.4);
+  letter-spacing: var(--jist-date-text-letter-spacing, normal);
+  padding-top: var(--jist-date-padding-top, 0);
+  padding-right: var(--jist-date-padding-right, 0);
+  padding-bottom: var(--jist-date-padding-bottom, 0);
+  padding-left: var(--jist-date-padding-left, 0);
+  margin-top: var(--jist-date-margin-top, 0);
+  margin-right: var(--jist-date-margin-right, 0);
+  margin-bottom: var(--jist-date-margin-bottom, 0);
+  margin-left: var(--jist-date-margin-left, 0);
+}
+
+/* ── Button ─────────────────────────────── */
+
+.jist__button {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  font-size: var(--jist-button-text-font-size, 14px);
+  font-weight: var(--jist-button-text-font-weight, 500);
+  color: var(--jist-button-text-color, #ffffff);
+  font-family: var(--jist-button-text-font-family, inherit);
+  line-height: var(--jist-button-text-line-height, 1);
+  background-color: var(--jist-button-background-color, #4f46e5);
+  border-width: var(--jist-button-border-width, 0);
+  border-style: solid;
+  border-color: var(--jist-button-border-color, transparent);
+  border-radius: var(--jist-button-border-radius, 6px);
+  box-shadow:
+    var(--jist-button-shadow-offset-x, 0)
+    var(--jist-button-shadow-offset-y, 0)
+    var(--jist-button-shadow-blur, 0)
+    var(--jist-button-shadow-color, transparent);
+  padding-top: var(--jist-button-padding-top, 8px);
+  padding-right: var(--jist-button-padding-right, 16px);
+  padding-bottom: var(--jist-button-padding-bottom, 8px);
+  padding-left: var(--jist-button-padding-left, 16px);
+  margin-top: var(--jist-button-margin-top, 0);
+  margin-right: var(--jist-button-margin-right, 0);
+  margin-bottom: var(--jist-button-margin-bottom, 0);
+  margin-left: var(--jist-button-margin-left, 0);
+  min-width: var(--jist-button-min-width, 0);
+  min-height: var(--jist-button-min-height, 0);
+  transition: background-color 0.15s ease, color 0.15s ease,
+              border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.jist__button:hover {
+  background-color: var(--jist-button-states-hover-background-color,
+                    var(--jist-button-background-color, #4338ca));
+  color: var(--jist-button-states-hover-text-color,
+         var(--jist-button-text-color, #ffffff));
+}
+
+.jist__button:active {
+  background-color: var(--jist-button-states-active-background-color,
+                    var(--jist-button-background-color, #3730a3));
+  color: var(--jist-button-states-active-text-color,
+         var(--jist-button-text-color, #ffffff));
+}
+
+.jist__button:disabled {
+  background-color: var(--jist-button-states-disabled-background-color,
+                    var(--jist-button-background-color, #c7d2fe));
+  color: var(--jist-button-states-disabled-text-color,
+         var(--jist-button-text-color, #a5b4fc));
+  cursor: not-allowed;
+}
+
+/* ── Image ──────────────────────────────── */
+
+.jist__image {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: var(--jist-image-border-radius, 0);
+  padding-top: var(--jist-image-padding-top, 0);
+  padding-right: var(--jist-image-padding-right, 0);
+  padding-bottom: var(--jist-image-padding-bottom, 0);
+  padding-left: var(--jist-image-padding-left, 0);
+  margin-top: var(--jist-image-margin-top, 0);
+  margin-right: var(--jist-image-margin-right, 0);
+  margin-bottom: var(--jist-image-margin-bottom, 0);
+  margin-left: var(--jist-image-margin-left, 0);
+}
+
+.jist__image img {
+  border-radius: inherit;
+}
+
+/* ── Dark Mode Defaults ────────────────── */
+
+[data-jist-dark] .jist__heading { color: var(--jist-heading-text-color, #ffffff); }
+[data-jist-dark] .jist__text { color: var(--jist-text-text-color, #ffffff); }
+[data-jist-dark] .jist__date { color: var(--jist-date-text-color, #ffffff); }
+[data-jist-dark] .jist__button { color: var(--jist-button-text-color, #ffffff); }
+
+/* ── Action (clickable wrapper) ─────────── */
+
+.jist__action {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.jist__action:focus-visible {
+  outline: 2px solid var(--jist-button-background-color, #4f46e5);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+`;

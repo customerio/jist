@@ -1,12 +1,55 @@
 {
-  "name": "jist-web",
-  "private": true,
+  "name": "@customerio/jist",
+  "version": "0.3.0",
+  "description": "Cross-platform JSON template renderer — web custom element. Renders Jist template trees into native DOM.",
   "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/jist-element.js",
+  "module": "./dist/jist-element.js",
+  "types": "./dist/jist-element.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/jist-element.d.ts",
+      "import": "./dist/jist-element.js"
+    },
+    "./renderer": {
+      "types": "./dist/jist-renderer.d.ts",
+      "import": "./dist/jist-renderer.js"
+    },
+    "./jist.css": "./dist/jist.css"
+  },
+  "sideEffects": [
+    "./dist/jist.css"
+  ],
   "scripts": {
     "build:wasm": "cd ../core/jist-core && cargo build --release --target wasm32-unknown-unknown && wasm-bindgen --target web --out-dir ../../web/src/wasm --out-name jist_core ../target/wasm32-unknown-unknown/release/jist_core.wasm",
-    "build": "tsc && cp -r src/wasm dist/wasm",
-    "test": "playwright test"
+    "build": "node build.cjs",
+    "dev": "node dev.cjs",
+    "test": "playwright test",
+    "prepublishOnly": "npm run build"
   },
+  "author": "Customer.io (https://customer.io)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/customerio/jist.git",
+    "directory": "web"
+  },
+  "bugs": {
+    "url": "https://github.com/customerio/jist/issues"
+  },
+  "homepage": "https://github.com/customerio/jist/tree/main/web",
+  "keywords": [
+    "jist",
+    "templates",
+    "in-app",
+    "messages",
+    "web-components",
+    "custom-element",
+    "customerio"
+  ],
   "devDependencies": {
     "@playwright/test": "^1.52.0",
     "serve": "^14.2.4",

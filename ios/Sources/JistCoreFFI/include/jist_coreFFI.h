@@ -286,6 +286,11 @@ RustBuffer uniffi_jist_core_fn_method_themeresolver_resolve_int(void*_Nonnull pt
 double uniffi_jist_core_fn_method_themeresolver_resolve_number(void*_Nonnull ptr, RustBuffer type_name, RustBuffer variant, RustBuffer group, RustBuffer property, RustBuffer state, double fallback, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_JIST_CORE_FN_METHOD_THEMERESOLVER_RESOLVE_PROPERTY
+#define UNIFFI_FFIDEF_UNIFFI_JIST_CORE_FN_METHOD_THEMERESOLVER_RESOLVE_PROPERTY
+RustBuffer uniffi_jist_core_fn_method_themeresolver_resolve_property(void*_Nonnull ptr, RustBuffer type_name, RustBuffer variant, RustBuffer property, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_JIST_CORE_FN_METHOD_THEMERESOLVER_RESOLVE_STRING
 #define UNIFFI_FFIDEF_UNIFFI_JIST_CORE_FN_METHOD_THEMERESOLVER_RESOLVE_STRING
 RustBuffer uniffi_jist_core_fn_method_themeresolver_resolve_string(void*_Nonnull ptr, RustBuffer type_name, RustBuffer variant, RustBuffer group, RustBuffer property, RustBuffer state, RustCallStatus *_Nonnull out_status
@@ -659,6 +664,12 @@ uint16_t uniffi_jist_core_checksum_method_themeresolver_resolve_int(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_JIST_CORE_CHECKSUM_METHOD_THEMERESOLVER_RESOLVE_NUMBER
 #define UNIFFI_FFIDEF_UNIFFI_JIST_CORE_CHECKSUM_METHOD_THEMERESOLVER_RESOLVE_NUMBER
 uint16_t uniffi_jist_core_checksum_method_themeresolver_resolve_number(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_JIST_CORE_CHECKSUM_METHOD_THEMERESOLVER_RESOLVE_PROPERTY
+#define UNIFFI_FFIDEF_UNIFFI_JIST_CORE_CHECKSUM_METHOD_THEMERESOLVER_RESOLVE_PROPERTY
+uint16_t uniffi_jist_core_checksum_method_themeresolver_resolve_property(void
     
 );
 #endif

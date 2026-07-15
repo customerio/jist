@@ -1,4 +1,6 @@
-import "../dist/jist-element.js";
+import { register } from "../dist/jist-element.js";
+
+register();
 
 // ── Load Shared Fixtures ────────────────────
 
@@ -61,6 +63,8 @@ mount("t-action", "action", "action");
 mount("t-hero", "hero", "hero");
 mount("t-inbox", "inbox", "inbox");
 mount("t-profile", "profile", "profile");
+mount("t-stats", "stats", "stats");
+mount("t-card", "card", "card");
 mount("t-announcement", "announcement", "announcement");
 
 // ── Dark Mode Toggle ────────────────────────

@@ -120,7 +120,10 @@ This renders identically on all three platforms. The theme adapts to light/dark 
 ### Web
 
 ```html
-<script type="module" src="jist-element.js"></script>
+<script type="module">
+  import { register } from "./jist-element.js";
+  register(); // defines <jist-template> — no-op if already defined
+</script>
 
 <jist-template
   template="inbox"
@@ -157,17 +160,27 @@ JistView(
 
 ### Android (Jetpack Compose)
 
+Define your fonts once at the app level and wrap your root composable with `JistTheme`. All `JistView` calls inside inherit the fonts automatically:
+
 ```kotlin
+import io.customer.jist.JistTheme
 import io.customer.jist.JistView
 
-JistView(
-    name = "basic",
-    templates = allTemplates,
-    data = data,
-    theme = theme,
-    formatDate = { iso, name -> "2 hours ago" },
-    onAction = { event -> Log.d("Jist", event.toString()) }
+val dmSans = FontFamily(
+    Font(R.font.dm_sans_regular, FontWeight.Normal),
+    Font(R.font.dm_sans_bold, FontWeight.Bold),
 )
+
+JistTheme(fonts = mapOf("DM Sans" to dmSans)) {
+    JistView(
+        name = "basic",
+        templates = allTemplates,
+        data = data,
+        theme = theme,
+        formatDate = { iso, name -> "2 hours ago" },
+        onAction = { event -> Log.d("Jist", event.toString()) }
+    )
+}
 ```
 
 ## Components
@@ -204,19 +217,34 @@ Dark mode is handled via sparse overrides under `modes.dark` — only the values
 | `formatDate` | `(isoString, name) -> string` | Converts ISO 8601 dates to display text. Optional — falls back to locale-aware formatting. |
 | `onAction` | `(event) -> void` | Receives `{ component, name, data, meta }` when a button or action is activated. |
 
+## Custom fonts
+
+Set `fontFamily` in any theme text group using the human-readable family name or a CSS-style fallback stack. Each platform resolves it natively — see [`spec/fonts.md`](spec/fonts.md) for bundling instructions and weight variant conventions.
+
+## Content Security Policy (web)
+
+What a page's CSP needs depends on how the element reaches it:
+
+- **Scripts** — Jist loads no scripts at runtime and contains no `eval`/`new Function`, so it works without `'unsafe-eval'`. When it's bundled into a host application or SDK, the host bundle's existing `script-src` allowance covers it — there is no separate Jist script for CSP to account for. Only when self-hosting `jist-element.js` as its own file does its origin need a `script-src` entry, and the quick start's inline `<script type="module">` snippet then needs an inline-script allowance (nonce or hash) — bundled apps should use a regular `import` instead.
+- **Styles** — Jist injects two `<style>` elements into `document.head` (base styles and generated theme-variant rules), which requires `'unsafe-inline'` in `style-src`. A nonce isn't currently supported, and hashes aren't practical because variant CSS is generated from theme data at runtime. Per-element theme values are applied through the CSSOM (`element.style`), which CSP doesn't restrict.
+- **Images** — `image` components create `<img>` elements from URLs in your data, so those origins must be allowed by `img-src`.
+- **Network** — Jist makes no network requests of its own; `connect-src` is unaffected. Fonts referenced by `fontFamily` resolve against whatever the host page loads, so any `font-src` needs belong to the host's own font loading.
+
 ## Project structure
 
 ```
 jist/
 ├── spec/               # Specification and JSON schemas
 │   ├── jist-spec.md
+│   ├── fonts.md
 │   ├── jist-template-schema.json
 │   ├── jist-template-registry-schema.json
 │   └── jist-theme-schema.json
 ├── shared/             # Shared fixtures (used by tests and example apps)
 │   ├── templates.json
 │   ├── data.json
-│   └── theme.json
+│   ├── theme.json
+│   └── tests/          # Per-component test fixtures (heading, text, date, button, image, layout)
 ├── builder/            # Visual template editor (Next.js)
 │   └── src/
 ├── web/                # Web renderer (custom element)
@@ -230,11 +258,13 @@ jist/
 
 ## Visual regression testing
 
-Each platform has snapshot tests that render every template with the shared fixtures and compare against committed baseline images. Any pixel-level drift beyond a small tolerance fails the test.
+Each platform has two suites of snapshot tests that compare against committed baseline images. Any pixel-level drift beyond a small tolerance fails the test.
 
-### Test matrix
+All tests use a deterministic `formatDate` (returns `"Apr 1, 2026"`) and placeholder images to ensure reproducible output without network access.
 
-Every platform tests the same combinations:
+### Demo template tests
+
+Render every demo template with the shared fixtures (templates.json, data.json, theme.json) in light and dark mode:
 
 | Template     | Light | Dark |
 |--------------|-------|------|
@@ -246,9 +276,23 @@ Every platform tests the same combinations:
 | hero         | ✓     | ✓    |
 | inbox        | ✓     | ✓    |
 | profile      | ✓     | ✓    |
+| stats        | ✓     | ✓    |
 | announcement | ✓     | ✓    |
 
-All tests use a deterministic `formatDate` (returns `"Apr 1, 2026"`) and placeholder images to ensure reproducible output without network access.
+### Component tests
+
+Per-component tests that exercise individual theme properties in isolation. Fixtures live in `shared/tests/{component}.json` — each file defines test cases with a node, data, and theme. The test harness wraps each node in a layout root automatically.
+
+| Component | required | all-properties | variant |
+|-----------|----------|----------------|---------|
+| heading   | light    | light + dark   | light + dark |
+| text      | light    | light + dark   | light + dark |
+| date      | light    | light + dark   | light + dark |
+| button    | light    | light + dark   | light + dark |
+| image     | light    | light + dark   | light + dark |
+| layout    | space-around | space-evenly | baseline |
+
+Three cases per component: **required** (no theme, validates defaults), **all-properties** (every theme property set), **variant** (base + variant, validates cascade). Layout tests exercise justify and align values. Adding a test case is just a JSON entry — no platform code changes.
 
 ### Platform tools
 
@@ -272,15 +316,15 @@ npx playwright test --update-snapshots    # re-record baselines
 ```bash
 cd ios
 swift test                                # verify against baselines
-# To re-record: uncomment `isRecording = true` in SnapshotTests.swift setUp(),
-# run swift test, then set it back to false and commit the new snapshots.
+# To re-record: uncomment `isRecording = true` in SnapshotTests.swift and
+# ComponentSnapshotTests.swift setUp(), run swift test, then set back to false.
 ```
 
 **Android**
 ```bash
 cd android
-./gradlew :jist:verifyPaparazziDebug      # verify against baselines
-./gradlew :jist:recordPaparazziDebug      # re-record baselines
+./gradlew :example:verifyPaparazziDebug      # verify against baselines
+./gradlew :example:recordPaparazziDebug      # re-record baselines
 ```
 
 ### Baseline files
@@ -288,8 +332,8 @@ cd android
 | Platform | Location |
 |----------|----------|
 | Web | `web/tests/__snapshots__/*.png` |
-| iOS | `ios/Tests/JistTests/__Snapshots__/SnapshotTests/*.png` |
-| Android | `android/jist/src/test/snapshots/images/*.png` |
+| iOS | `ios/Tests/JistTests/__Snapshots__/SnapshotTests/*.png` (demo), `__Snapshots__/ComponentSnapshotTests/*.png` (component) |
+| Android | `android/example/src/test/snapshots/images/*.png` |
 
 These PNGs are committed to the repo. When a renderer change is intentional, re-record and commit the updated baselines.
 

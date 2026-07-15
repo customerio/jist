@@ -1,0 +1,68 @@
+name: Release Web
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Semantic version component to bump'
+        type: choice
+        required: true
+        options:
+          - 'patch'
+          - 'minor'
+          - 'major'
+        default: 'patch'
+      dry_run:
+        description: 'Dry run — show what would be published without pushing'
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main' && github.repository_owner == 'customerio'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.SRE_GHACTIONS_TOKEN }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Bump version
+        working-directory: web
+        run: npm version ${{ inputs.bump }} --no-git-tag-version
+
+      - name: Read new version
+        id: version
+        working-directory: web
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        working-directory: web
+        run: npm run build
+
+      - name: Dry run
+        if: inputs.dry_run
+        working-directory: web
+        run: |
+          echo "Would release web-v${{ steps.version.outputs.version }}"
+          echo ""
+          npm pack --dry-run
+
+      - name: Commit and tag
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add web/package.json web/package-lock.json
+          git commit -m "web: bump version to ${{ steps.version.outputs.version }}"
+          git tag "web-v${{ steps.version.outputs.version }}"
+          git push origin main "web-v${{ steps.version.outputs.version }}"

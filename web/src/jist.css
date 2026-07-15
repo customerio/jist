@@ -22,7 +22,7 @@ jist-template {
 .jist__heading {
   font-size: var(--jist-heading-text-font-size, 16px);
   font-weight: var(--jist-heading-text-font-weight, 600);
-  color: var(--jist-heading-text-color, #1a1a2e);
+  color: var(--jist-heading-text-color, #000000);
   font-family: var(--jist-heading-text-font-family, inherit);
   line-height: var(--jist-heading-text-line-height, 1.3);
   letter-spacing: var(--jist-heading-text-letter-spacing, normal);
@@ -41,33 +41,12 @@ jist-template {
   overflow: hidden;
 }
 
-.jist__heading--h2 {
-  font-size: var(--jist-heading-h2-text-font-size, var(--jist-heading-text-font-size, 20px));
-  font-weight: var(--jist-heading-h2-text-font-weight, var(--jist-heading-text-font-weight, 700));
-  color: var(--jist-heading-h2-text-color, var(--jist-heading-text-color, #1a1a2e));
-  line-height: var(--jist-heading-h2-text-line-height, var(--jist-heading-text-line-height, 1.3));
-}
-
-.jist__heading--h3 {
-  font-size: var(--jist-heading-h3-text-font-size, var(--jist-heading-text-font-size, 16px));
-  font-weight: var(--jist-heading-h3-text-font-weight, var(--jist-heading-text-font-weight, 600));
-  color: var(--jist-heading-h3-text-color, var(--jist-heading-text-color, #1a1a2e));
-  line-height: var(--jist-heading-h3-text-line-height, var(--jist-heading-text-line-height, 1.3));
-}
-
-.jist__heading--h4 {
-  font-size: var(--jist-heading-h4-text-font-size, var(--jist-heading-text-font-size, 14px));
-  font-weight: var(--jist-heading-h4-text-font-weight, var(--jist-heading-text-font-weight, 500));
-  color: var(--jist-heading-h4-text-color, var(--jist-heading-text-color, #1a1a2e));
-  line-height: var(--jist-heading-h4-text-line-height, var(--jist-heading-text-line-height, 1.3));
-}
-
 /* ── Text ───────────────────────────────── */
 
 .jist__text {
   font-size: var(--jist-text-text-font-size, 14px);
   font-weight: var(--jist-text-text-font-weight, 400);
-  color: var(--jist-text-text-color, #4a4a68);
+  color: var(--jist-text-text-color, #000000);
   font-family: var(--jist-text-text-font-family, inherit);
   line-height: var(--jist-text-text-line-height, 1.5);
   letter-spacing: var(--jist-text-text-letter-spacing, normal);
@@ -91,7 +70,7 @@ jist-template {
 .jist__date {
   font-size: var(--jist-date-text-font-size, 12px);
   font-weight: var(--jist-date-text-font-weight, 400);
-  color: var(--jist-date-text-color, #8e8ea0);
+  color: var(--jist-date-text-color, #000000);
   font-family: var(--jist-date-text-font-family, inherit);
   line-height: var(--jist-date-text-line-height, 1.4);
   letter-spacing: var(--jist-date-text-letter-spacing, normal);
@@ -166,71 +145,33 @@ jist-template {
   cursor: not-allowed;
 }
 
-/* Button — primary variant */
-
-.jist__button--primary {
-  color: var(--jist-button-primary-text-color,
-         var(--jist-button-text-color, #ffffff));
-  background-color: var(--jist-button-primary-background-color,
-                    var(--jist-button-background-color, #4f46e5));
-  border-width: var(--jist-button-primary-border-width,
-                var(--jist-button-border-width, 0));
-  border-color: var(--jist-button-primary-border-color,
-                var(--jist-button-border-color, transparent));
-  border-radius: var(--jist-button-primary-border-radius,
-                 var(--jist-button-border-radius, 6px));
-}
-
-.jist__button--primary:hover {
-  background-color: var(--jist-button-primary-states-hover-background-color,
-                    var(--jist-button-states-hover-background-color,
-                    var(--jist-button-primary-background-color,
-                    var(--jist-button-background-color, #4338ca))));
-}
-
-.jist__button--primary:active {
-  background-color: var(--jist-button-primary-states-active-background-color,
-                    var(--jist-button-states-active-background-color,
-                    var(--jist-button-primary-background-color,
-                    var(--jist-button-background-color, #3730a3))));
-}
-
-/* Button — secondary variant */
-
-.jist__button--secondary {
-  color: var(--jist-button-secondary-text-color,
-         var(--jist-button-text-color, #4a4a68));
-  background-color: var(--jist-button-secondary-background-color,
-                    var(--jist-button-background-color, #f4f4f6));
-  border-width: var(--jist-button-secondary-border-width,
-                var(--jist-button-border-width, 1px));
-  border-color: var(--jist-button-secondary-border-color,
-                var(--jist-button-border-color, #e2e2e8));
-  border-radius: var(--jist-button-secondary-border-radius,
-                 var(--jist-button-border-radius, 6px));
-}
-
-.jist__button--secondary:hover {
-  background-color: var(--jist-button-secondary-states-hover-background-color,
-                    var(--jist-button-states-hover-background-color,
-                    var(--jist-button-secondary-background-color,
-                    var(--jist-button-background-color, #e8e8ee))));
-}
-
-.jist__button--secondary:active {
-  background-color: var(--jist-button-secondary-states-active-background-color,
-                    var(--jist-button-states-active-background-color,
-                    var(--jist-button-secondary-background-color,
-                    var(--jist-button-background-color, #dddde5))));
-}
-
 /* ── Image ──────────────────────────────── */
 
 .jist__image {
   display: block;
   max-width: 100%;
+  overflow: hidden;
   border-radius: var(--jist-image-border-radius, 0);
+  padding-top: var(--jist-image-padding-top, 0);
+  padding-right: var(--jist-image-padding-right, 0);
+  padding-bottom: var(--jist-image-padding-bottom, 0);
+  padding-left: var(--jist-image-padding-left, 0);
+  margin-top: var(--jist-image-margin-top, 0);
+  margin-right: var(--jist-image-margin-right, 0);
+  margin-bottom: var(--jist-image-margin-bottom, 0);
+  margin-left: var(--jist-image-margin-left, 0);
 }
+
+.jist__image img {
+  border-radius: inherit;
+}
+
+/* ── Dark Mode Defaults ────────────────── */
+
+[data-jist-dark] .jist__heading { color: var(--jist-heading-text-color, #ffffff); }
+[data-jist-dark] .jist__text { color: var(--jist-text-text-color, #ffffff); }
+[data-jist-dark] .jist__date { color: var(--jist-date-text-color, #ffffff); }
+[data-jist-dark] .jist__button { color: var(--jist-button-text-color, #ffffff); }
 
 /* ── Action (clickable wrapper) ─────────── */
 

@@ -2,7 +2,7 @@ plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
-    id("app.cash.paparazzi")
+    id("io.customer.android.publish-module")
 }
 
 android {
@@ -10,11 +10,10 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        minSdk = 24
+        minSdk = 21
     }
 
     compileOptions {
-        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -23,15 +22,15 @@ android {
         jvmTarget = "17"
     }
 
-    sourceSets {
-        getByName("test") {
-            resources.srcDir("../../shared")
-        }
+    lint {
+        // The Android floor is minSdk 21. Calling an API above the floor without a
+        // version guard must fail the build, not just warn.
+        abortOnError = true
+        error += "NewApi"
     }
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
@@ -39,14 +38,15 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.4")
     // JNA loads the jist-core (Rust) native library for the UniFFI bindings.
-    // AAR variant for devices; plain JAR for local JVM (Paparazzi) tests.
+    // Models, parsing, and theme resolution live in core/jist-core — see
+    // core/build-all.sh for building the bundled .so files (jniLibs/).
     implementation("net.java.dev.jna:jna:5.15.0@aar")
-    testImplementation("net.java.dev.jna:jna:5.15.0")
-    testImplementation("io.coil-kt.coil3:coil-test:3.0.4")
 }
 
-// JVM tests (Paparazzi) load the host build of jist-core; build it with
-// `cargo build` in core/ first (see core/build-all.sh).
-tasks.withType<Test>().configureEach {
-    systemProperty("jna.library.path", "${rootDir}/../core/target/debug")
+// Maven Central coordinates: io.customer.android:jist (group comes from the shared plugin).
+customerIoPublish {
+    artifactId = "jist"
+    artifactName = "Customer.io Jist (Android)"
+    description = "Customer.io Jist — native Android renderer for JSON-template inbox messages."
+    url = "https://github.com/customerio/jist"
 }

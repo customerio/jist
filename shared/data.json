@@ -73,6 +73,24 @@
     "secondary": { "label": "Message", "url": "/messages/dana" },
     "cta": { "label": "View profile", "url": "/team/dana-park" }
   },
+  "stats": {
+    "title": "Weekly Performance",
+    "body": "Your key metrics for this week at a glance.",
+    "value1": "2.4k",
+    "unit1": "views",
+    "value2": "18",
+    "unit2": "signups",
+    "value3": "94%",
+    "unit3": "uptime",
+    "timestamp": "2026-04-01T00:00:00Z",
+    "cta": { "label": "View report", "url": "/reports/weekly" }
+  },
+  "card": {
+    "title": "Design review ready",
+    "body": "The latest mockups are ready for your feedback. Take a look when you get a chance.",
+    "icon": "https://placehold.co/96x96/c7d2fe/4338ca.png?text=DR",
+    "action": { "url": "/reviews/42" }
+  },
   "announcement": {
     "title": "Jist 2.0 is here",
     "subtitle": "A major update to the cross-platform template renderer with new components and improved performance.",

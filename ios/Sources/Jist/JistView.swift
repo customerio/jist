@@ -63,6 +63,8 @@ public struct JistView: View {
                 onAction: onAction,
                 templates: templates
             )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .environment(\.jistStretch, true)
         }
     }
 

@@ -1,0 +1,49 @@
+{
+  "required": {
+    "node": { "type": "text", "name": "body" },
+    "data": { "body": "The quick brown fox jumps over the lazy dog." },
+    "theme": {}
+  },
+  "all-properties": {
+    "node": { "type": "text", "name": "body" },
+    "data": { "body": "This text exercises every theme property. It is deliberately long so that maxLines truncation with ellipsis can be verified across all three platforms." },
+    "theme": {
+      "text": {
+        "text": { "fontSize": 18, "fontWeight": 600, "color": "#7C3AED", "lineHeight": 1.8, "letterSpacing": 1, "maxLines": 2 },
+        "padding": { "top": 6, "right": 10, "bottom": 6, "left": 10 },
+        "margin": { "top": 4, "right": 4, "bottom": 8, "left": 4 }
+      },
+      "modes": {
+        "dark": {
+          "text": {
+            "text": { "color": "#C4B5FD" }
+          }
+        }
+      }
+    }
+  },
+  "variant": {
+    "node": { "type": "text", "name": "body", "variant": "caption" },
+    "data": { "body": "Caption styled text" },
+    "theme": {
+      "text": {
+        "text": { "fontSize": 16, "fontWeight": 500, "color": "#1F2937" },
+        "padding": { "bottom": 6 },
+        "caption": {
+          "text": { "fontSize": 11, "fontWeight": 400, "color": "#9CA3AF" },
+          "margin": { "top": 2 }
+        }
+      },
+      "modes": {
+        "dark": {
+          "text": {
+            "text": { "color": "#F3F4F6" },
+            "caption": {
+              "text": { "color": "#6B7280" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

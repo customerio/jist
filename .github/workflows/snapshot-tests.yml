@@ -24,6 +24,12 @@ env:
   UBUNTU_RUNNER: ubuntu-24.04
   NODE_VERSION: "20"
   JAVA_VERSION: "17"
+  # Must be an Xcode version whose iOS simulator runtime ships on the runner
+  # image — in practice the image's default Xcode. Older Xcodes remain
+  # installed but resolve zero simulator destinations once their runtime
+  # rotates out of the image.
+  XCODE_VERSION: "26.5"
+  IOS_SIMULATOR: iPhone 17 Pro
 
 jobs:
   # ── Verify mode (push / PR) ──────────────────────────────────
@@ -61,21 +67,29 @@ jobs:
     runs-on: ${{ vars.MACOS_RUNNER || 'macos-26' }}
     defaults:
       run:
-        working-directory: ios
+        # Package.swift lives at the repo root, so xcodebuild resolves the Jist scheme from there.
+        working-directory: .
     steps:
       - uses: actions/checkout@v5
 
       - name: Select Xcode
         run: |
-          XCODE_PATH=$(ls -d /Applications/Xcode_26.4* 2>/dev/null | head -1)
+          XCODE_PATH=$(ls -d "/Applications/Xcode_${XCODE_VERSION}"* 2>/dev/null | head -1)
           if [ -z "$XCODE_PATH" ]; then
-            echo "Xcode 26.4 not found, using default"
+            echo "Xcode ${XCODE_VERSION} not found, using default"
           else
             sudo xcode-select -s "$XCODE_PATH"
           fi
           xcodebuild -version
 
-      - run: swift test
+      - name: List available simulators
+        run: xcrun simctl list devices available
+
+      - run: >-
+          xcodebuild test
+          -scheme Jist
+          -destination 'platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }}'
+          -skipPackagePluginValidation
 
       - name: Upload diff artifacts
         if: failure()
@@ -100,14 +114,14 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: gradle
 
-      - run: ./gradlew :jist:verifyPaparazziDebug
+      - run: ./gradlew :example:verifyPaparazziDebug
 
       - name: Upload diff artifacts
         if: failure()
         uses: actions/upload-artifact@v5
         with:
           name: android-snapshot-diffs
-          path: android/jist/build/reports/paparazzi/
+          path: android/example/build/reports/paparazzi/
 
   # ── Record mode (workflow dispatch) ──────────────────────────
   record:
@@ -123,9 +137,9 @@ jobs:
       # ── Xcode ──
       - name: Select Xcode
         run: |
-          XCODE_PATH=$(ls -d /Applications/Xcode_26.4* 2>/dev/null | head -1)
+          XCODE_PATH=$(ls -d "/Applications/Xcode_${XCODE_VERSION}"* 2>/dev/null | head -1)
           if [ -z "$XCODE_PATH" ]; then
-            echo "Xcode 26.4 not found, using default"
+            echo "Xcode ${XCODE_VERSION} not found, using default"
           else
             sudo xcode-select -s "$XCODE_PATH"
           fi
@@ -148,10 +162,13 @@ jobs:
 
       # ── iOS ──
       - name: Record iOS baselines
-        working-directory: ios
+        # Package.swift lives at the repo root; run xcodebuild from there.
         run: |
-          sed -i '' 's|// isRecording = true|isRecording = true|' Tests/JistTests/SnapshotTests.swift
-          swift test || true
+          sed -i '' 's|// isRecording = true|isRecording = true|' ios/Tests/JistTests/SnapshotTests.swift ios/Tests/JistTests/ComponentSnapshotTests.swift
+          xcodebuild test \
+            -scheme Jist \
+            -destination 'platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }}' \
+            -skipPackagePluginValidation || true
 
       # ── Android ──
       - uses: actions/setup-java@v5
@@ -161,20 +178,20 @@ jobs:
 
       - name: Record Android baselines
         working-directory: android
-        run: ./gradlew :jist:recordPaparazziDebug
+        run: ./gradlew :example:recordPaparazziDebug
 
       # ── Open PR ──
       - name: Create PR with updated baselines
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git checkout -- ios/Tests/JistTests/SnapshotTests.swift
+          git checkout -- ios/Tests/JistTests/SnapshotTests.swift ios/Tests/JistTests/ComponentSnapshotTests.swift
           BRANCH="ci/update-snapshots-$(date +%Y%m%d-%H%M%S)"
           git checkout -b "$BRANCH"
           git add \
             web/tests/__snapshots__ \
             ios/Tests/JistTests/__Snapshots__ \
-            android/jist/src/test/snapshots
+            android/example/src/test/snapshots
           if git diff --cached --quiet; then
             echo "No snapshot changes detected"
             exit 0
@@ -185,6 +202,7 @@ jobs:
           git push origin "$BRANCH"
           gh pr create \
             --title "Update snapshot baselines" \
+            --base "${{ github.ref_name }}" \
             --body "Re-recorded snapshot baselines from CI runners.
 
           Triggered via workflow dispatch."

@@ -258,6 +258,105 @@
       }
     }
   ],
+  "stats": [
+    {
+      "version": "1",
+      "root": {
+        "type": "layout",
+        "direction": "vertical",
+        "gap": 10,
+        "children": [
+          { "type": "heading", "name": "title" },
+          { "type": "text", "name": "body" },
+          {
+            "type": "layout",
+            "direction": "horizontal",
+            "justify": "space-evenly",
+            "margin": { "top": 4, "bottom": 4 },
+            "children": [
+              {
+                "type": "layout",
+                "direction": "vertical",
+                "align": "center",
+                "gap": 2,
+                "children": [
+                  { "type": "heading", "name": "value1", "variant": "h2" },
+                  { "type": "text", "name": "unit1" }
+                ]
+              },
+              {
+                "type": "layout",
+                "direction": "vertical",
+                "align": "center",
+                "gap": 2,
+                "children": [
+                  { "type": "heading", "name": "value2", "variant": "h2" },
+                  { "type": "text", "name": "unit2" }
+                ]
+              },
+              {
+                "type": "layout",
+                "direction": "vertical",
+                "align": "center",
+                "gap": 2,
+                "children": [
+                  { "type": "heading", "name": "value3", "variant": "h2" },
+                  { "type": "text", "name": "unit3" }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "layout",
+            "direction": "horizontal",
+            "gap": 8,
+            "align": "center",
+            "justify": "end",
+            "children": [
+              { "type": "date", "name": "timestamp" },
+              { "type": "button", "name": "cta", "variant": "secondary" }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "card": [
+    {
+      "version": "1",
+      "root": {
+        "type": "action",
+        "name": "action",
+        "children": [
+          {
+            "type": "layout",
+            "direction": "horizontal",
+            "gap": 10,
+            "align": "center",
+            "children": [
+              {
+                "type": "image",
+                "name": "icon",
+                "width": 40,
+                "height": 40,
+                "objectFit": "cover",
+                "borderRadius": 8
+              },
+              {
+                "type": "layout",
+                "direction": "vertical",
+                "gap": 2,
+                "children": [
+                  { "type": "heading", "name": "title", "variant": "h4" },
+                  { "type": "text", "name": "body" }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
   "announcement": [
     {
       "version": "1",

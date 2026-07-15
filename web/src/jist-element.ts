@@ -4,6 +4,8 @@
    ═══════════════════════════════════════════ */
 
 import JistRenderer from "./jist-renderer.js";
+import JIST_BASE_CSS from "./jist-css.js";
+import init, { parse_template } from "./wasm/jist_core.js";
 import type {
   JistTemplate,
   JistData,
@@ -11,9 +13,28 @@ import type {
   JistOnAction,
   JistActionEvent,
 } from "./jist-renderer.js";
-import init, { parse_template } from "./wasm/jist_core.js";
+
+// Load the jist-core (Rust) wasm module. Module evaluation suspends here
+// until the core is ready, so the synchronous render path can call
+// parse_template(). This loads an asset but registers nothing — defining
+// <jist-template> remains an explicit opt-in via register().
+await init();
 
 const SUPPORTED_VERSION = "1";
+
+const TAG_NAME = "jist-template";
+
+// Public properties replayed through #upgradeProperty when the element
+// connects after a late upgrade.
+const UPGRADABLE_PROPS = [
+  "template",
+  "data",
+  "theme",
+  "mode",
+  "formatDate",
+  "onAction",
+  "templates",
+] as const;
 
 // Theme properties that are unitless numbers (not CSS lengths)
 const UNITLESS_KEYS = new Set([
@@ -22,6 +43,61 @@ const UNITLESS_KEYS = new Set([
   "lineHeight",
   "opacity",
 ]);
+
+// Numeric properties where 0 means "reset to platform default" (CSS `normal`),
+// not a literal zero value. Setting these to 0 breaks the var() fallback chain
+// so the variant doesn't inherit the base heading's value.
+const ZERO_MEANS_NORMAL = new Set([
+  "lineHeight",
+  "letterSpacing",
+]);
+
+// ── Variant CSS generation ─────────────────
+// Maps a flattened theme path suffix to the CSS property it controls.
+// Only leaf properties that appear in a variant's theme data generate CSS.
+const PATH_TO_CSS: Record<string, string> = {
+  "text-font-size": "font-size",
+  "text-font-weight": "font-weight",
+  "text-font-family": "font-family",
+  "text-color": "color",
+  "text-line-height": "line-height",
+  "text-letter-spacing": "letter-spacing",
+  "text-max-lines": "-webkit-line-clamp",
+  "background-color": "background-color",
+  "border-width": "border-width",
+  "border-color": "border-color",
+  "border-radius": "border-radius",
+  "padding-top": "padding-top",
+  "padding-right": "padding-right",
+  "padding-bottom": "padding-bottom",
+  "padding-left": "padding-left",
+  "margin-top": "margin-top",
+  "margin-right": "margin-right",
+  "margin-bottom": "margin-bottom",
+  "margin-left": "margin-left",
+  "min-width": "min-width",
+  "min-height": "min-height",
+};
+
+const SHADOW_PARTS = ["shadow-offset-x", "shadow-offset-y", "shadow-blur", "shadow-color"] as const;
+const SHADOW_DEFAULTS: Record<string, string> = {
+  "shadow-offset-x": "0", "shadow-offset-y": "0", "shadow-blur": "0", "shadow-color": "transparent",
+};
+
+const BASE_KEYS: Record<string, Set<string>> = {
+  heading: new Set(["text", "padding", "margin"]),
+  text: new Set(["text", "padding", "margin"]),
+  date: new Set(["text", "padding", "margin"]),
+  button: new Set(["text", "background", "border", "shadow", "padding", "margin", "minWidth", "minHeight", "states"]),
+  image: new Set(["border", "padding", "margin"]),
+};
+
+const BUTTON_STATES = ["hover", "active", "disabled"] as const;
+
+const BUTTON_STATE_PROPS: Array<[string, string]> = [
+  ["background-color", "background-color"],
+  ["color", "text-color"],
+];
 
 type JistMode = "auto" | "light" | "dark";
 
@@ -33,6 +109,23 @@ interface ThemeObject {
 class JistTemplateElement extends HTMLElement {
   static observedAttributes = ["template", "data", "theme", "mode"];
 
+  static #baseStyleInjected = false;
+  static #sharedStyle: HTMLStyleElement | null = null;
+  static #nextScopeId = 0;
+  // unscoped CSS → { scopeId, refCount }
+  static #scopes = new Map<string, { id: number; refs: number }>();
+
+  static #injectBaseStyles(): void {
+    if (JistTemplateElement.#baseStyleInjected) return;
+    JistTemplateElement.#baseStyleInjected = true;
+    if (document.querySelector("style[data-jist-base]")) return;
+    const style = document.createElement("style");
+    style.setAttribute("data-jist-base", "");
+    style.textContent = JIST_BASE_CSS;
+    document.head.appendChild(style);
+  }
+
+  #scopeKey: string | null = null;
   #template: string | null = null;
   #data: JistData | null = null;
   #theme: ThemeObject | null = null;
@@ -121,6 +214,7 @@ class JistTemplateElement extends HTMLElement {
   // ── Lifecycle ─────────────────────────────
 
   connectedCallback(): void {
+    JistTemplateElement.#injectBaseStyles();
     this.#mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     this.#mediaHandler = () => {
       if (this.#mode === "auto") {
@@ -130,14 +224,30 @@ class JistTemplateElement extends HTMLElement {
     };
     this.#mediaQuery.addEventListener("change", this.#mediaHandler);
 
+    for (const prop of UPGRADABLE_PROPS) this.#upgradeProperty(prop);
+
     this.#applyTheme();
     this.#render();
+  }
+
+  // A property assigned before upgrade sits as an own data property that
+  // shadows the class accessor, so the setter (and rendering) never runs.
+  // connectedCallback replays each one: capture, delete, re-assign through
+  // the real setter — the "lazy properties" upgrade pattern.
+  #upgradeProperty(prop: string): void {
+    if (!Object.prototype.hasOwnProperty.call(this, prop)) return;
+    const self = this as unknown as Record<string, unknown>;
+    const value = self[prop];
+    delete self[prop];
+    self[prop] = value;
   }
 
   disconnectedCallback(): void {
     if (this.#mediaQuery && this.#mediaHandler) {
       this.#mediaQuery.removeEventListener("change", this.#mediaHandler);
     }
+    this.#releaseScope();
+    JistTemplateElement.#syncSharedStyle();
   }
 
   attributeChangedCallback(
@@ -177,8 +287,25 @@ class JistTemplateElement extends HTMLElement {
   }
 
   #applyTheme(): void {
-    if (!this.#theme) return;
-    if (!this.isConnected) return;
+    if (!this.isConnected) {
+      if (!this.#theme) {
+        this.#releaseScope();
+        JistTemplateElement.#syncSharedStyle();
+      }
+      return;
+    }
+
+    if (this.#isDark()) {
+      this.setAttribute("data-jist-dark", "");
+    } else {
+      this.removeAttribute("data-jist-dark");
+    }
+
+    if (!this.#theme) {
+      this.#releaseScope();
+      JistTemplateElement.#syncSharedStyle();
+      return;
+    }
 
     // Clear existing jist custom properties
     const toRemove: string[] = [];
@@ -198,6 +325,9 @@ class JistTemplateElement extends HTMLElement {
         this.#flatten(darkOverrides, "--jist");
       }
     }
+
+    // Generate variant CSS rules
+    this.#applyVariantCSS();
   }
 
   #flatten(obj: ThemeObject, prefix: string): void {
@@ -207,15 +337,172 @@ class JistTemplateElement extends HTMLElement {
       const prop = `${prefix}-${kebab}`;
       if (value !== null && typeof value === "object" && !Array.isArray(value)) {
         this.#flatten(value as ThemeObject, prop);
-      } else if (value !== null && value !== undefined) {
-        // Numeric values get "px" suffix unless they're unitless properties
+      } else if (value !== null && value !== undefined && value !== "") {
+        // Numeric 0 on reset-capable properties means "back to normal" — set the
+        // CSS keyword so the var() chain is broken rather than inheriting the base.
         const cssValue =
-          typeof value === "number" && !UNITLESS_KEYS.has(key)
+          value === 0 && ZERO_MEANS_NORMAL.has(key)
+            ? "normal"
+            : typeof value === "number" && !UNITLESS_KEYS.has(key)
             ? `${value}px`
             : String(value);
         this.style.setProperty(prop, cssValue);
       }
     }
+  }
+
+  // ── Variant CSS Generation ────────────────
+
+  #applyVariantCSS(): void {
+    const unscopedRules: string[] = [];
+    const theme = this.#theme;
+    if (!theme) return;
+
+    const dark = (theme.modes as ThemeObject | undefined)?.dark as ThemeObject | undefined;
+
+    for (const type of Object.keys(BASE_KEYS)) {
+      const base = theme[type] as ThemeObject | undefined;
+      const darkBase = dark?.[type] as ThemeObject | undefined;
+      const baseKeys = BASE_KEYS[type];
+
+      const variantNames = new Set<string>();
+      for (const src of [base, darkBase]) {
+        if (!src) continue;
+        for (const key of Object.keys(src)) {
+          if (!baseKeys.has(key) && !key.startsWith("$")) variantNames.add(key);
+        }
+      }
+
+      for (const variant of variantNames) {
+        const lightData = (base?.[variant] ?? {}) as ThemeObject;
+        const darkData = (darkBase?.[variant] ?? {}) as ThemeObject;
+        unscopedRules.push(this.#buildVariantRule(type, variant, lightData, darkData));
+      }
+    }
+
+    const unscopedCSS = unscopedRules.join("\n");
+
+    // Release previous scope before acquiring a new one
+    this.#releaseScope();
+
+    if (!unscopedCSS) return;
+
+    let entry = JistTemplateElement.#scopes.get(unscopedCSS);
+    if (!entry) {
+      entry = { id: JistTemplateElement.#nextScopeId++, refs: 0 };
+      JistTemplateElement.#scopes.set(unscopedCSS, entry);
+    }
+    entry.refs++;
+    this.#scopeKey = unscopedCSS;
+    this.setAttribute("data-jist-v", String(entry.id));
+
+    JistTemplateElement.#syncSharedStyle();
+  }
+
+  #releaseScope(): void {
+    if (!this.#scopeKey) return;
+    const entry = JistTemplateElement.#scopes.get(this.#scopeKey);
+    if (entry) {
+      entry.refs--;
+      if (entry.refs <= 0) JistTemplateElement.#scopes.delete(this.#scopeKey);
+    }
+    this.#scopeKey = null;
+    this.removeAttribute("data-jist-v");
+  }
+
+  static #syncSharedStyle(): void {
+    if (JistTemplateElement.#scopes.size === 0) {
+      if (JistTemplateElement.#sharedStyle) {
+        JistTemplateElement.#sharedStyle.remove();
+        JistTemplateElement.#sharedStyle = null;
+      }
+      return;
+    }
+    if (!JistTemplateElement.#sharedStyle) {
+      JistTemplateElement.#sharedStyle = document.createElement("style");
+      JistTemplateElement.#sharedStyle.setAttribute("data-jist-variants", "");
+      document.head.appendChild(JistTemplateElement.#sharedStyle);
+    }
+    const parts: string[] = [];
+    for (const [unscopedCSS, { id }] of JistTemplateElement.#scopes) {
+      const scope = `[data-jist-v="${id}"]`;
+      parts.push(unscopedCSS.replace(/^(\.[a-z_-]+)/gm, `${scope} $1`));
+    }
+    JistTemplateElement.#sharedStyle.textContent = parts.join("\n");
+  }
+
+  #buildVariantRule(
+    type: string,
+    variant: string,
+    lightData: ThemeObject,
+    darkData: ThemeObject
+  ): string {
+    const kebabVariant = variant.replace(/([A-Z])/g, "-$1").toLowerCase();
+    const cls = `.jist__${type}--${kebabVariant}`;
+
+    // Collect all leaf paths from the variant's theme data (union of light + dark)
+    const paths = new Set<string>();
+    const collectPaths = (obj: ThemeObject, prefix: string) => {
+      for (const [key, value] of Object.entries(obj)) {
+        if (key === "states" || key.startsWith("$")) continue;
+        const kebab = key.replace(/([A-Z])/g, "-$1").toLowerCase();
+        const path = prefix ? `${prefix}-${kebab}` : kebab;
+        if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+          collectPaths(value as ThemeObject, path);
+        } else {
+          paths.add(path);
+        }
+      }
+    };
+    collectPaths(lightData, "");
+    collectPaths(darkData, "");
+
+    const lines: string[] = [];
+    for (const path of paths) {
+      const cssProp = PATH_TO_CSS[path];
+      if (!cssProp) continue;
+      const variantVar = `--jist-${type}-${kebabVariant}-${path}`;
+      const baseVar = `--jist-${type}-${path}`;
+      lines.push(`  ${cssProp}: var(${variantVar}, var(${baseVar}));`);
+    }
+
+    // box-shadow is composite — emit if any shadow sub-property is defined
+    if (type === "button" && [...paths].some((p) => p.startsWith("shadow-"))) {
+      const shadowParts = SHADOW_PARTS.map((part) => {
+        const variantVar = `--jist-button-${kebabVariant}-${part}`;
+        const baseVar = `--jist-button-${part}`;
+        return `var(${variantVar}, var(${baseVar}, ${SHADOW_DEFAULTS[part]}))`;
+      });
+      lines.push(`  box-shadow: ${shadowParts.join(" ")};`);
+    }
+
+    let css = `${cls} {\n${lines.join("\n")}\n}`;
+
+    // Button state pseudo-classes
+    if (type === "button") {
+      const hasStates = (lightData.states as ThemeObject | undefined)
+        || (darkData.states as ThemeObject | undefined);
+      if (hasStates) {
+        for (const state of BUTTON_STATES) {
+          const lightState = (lightData.states as ThemeObject | undefined)?.[state] as ThemeObject | undefined;
+          const darkState = (darkData.states as ThemeObject | undefined)?.[state] as ThemeObject | undefined;
+          if (!lightState && !darkState) continue;
+
+          const stateLines: string[] = [];
+          for (const [cssProp, suffix] of BUTTON_STATE_PROPS) {
+            const vs = `--jist-button-${kebabVariant}-states-${state}-${suffix}`;
+            const bs = `--jist-button-states-${state}-${suffix}`;
+            const vb = `--jist-button-${kebabVariant}-${suffix}`;
+            const bb = `--jist-button-${suffix}`;
+            stateLines.push(`  ${cssProp}: var(${vs}, var(${bs}, var(${vb}, var(${bb}))));`);
+          }
+          const pseudo = state === "disabled" ? ":disabled" : `:${state}`;
+          css += `\n${cls}${pseudo} {\n${stateLines.join("\n")}\n}`;
+        }
+      }
+    }
+
+    return css;
   }
 
   // ── Rendering ─────────────────────────────
@@ -258,15 +545,29 @@ class JistTemplateElement extends HTMLElement {
   }
 }
 
-// Initialize the Rust core (WASM) before registering the element, so the
-// synchronous render path can call parse_template(). Module evaluation suspends
-// here until the wasm is ready; the element only becomes defined afterward.
-await init();
+// ── Registration ──────────────────────────
 
-customElements.define("jist-template", JistTemplateElement);
+// Importing this module has no side effects: hosts opt in to defining
+// <jist-template> by calling register(). First registration wins — if the
+// tag is already defined (an older copy, a duplicate bundle, or a second
+// SDK instance on the page) this is a no-op instead of throwing
+// NotSupportedError, and a warning is logged when the tag is owned by a
+// different constructor so version skew stays diagnosable.
+function register(): void {
+  const existing = customElements.get(TAG_NAME);
+  if (!existing) {
+    customElements.define(TAG_NAME, JistTemplateElement);
+    return;
+  }
+  if (existing !== JistTemplateElement) {
+    console.warn(
+      "[jist] <jist-template> is already registered by another copy or version of the library; keeping the first registration."
+    );
+  }
+}
 
 export default JistTemplateElement;
-export { JistRenderer };
+export { JistRenderer, register };
 export type {
   JistTemplate,
   JistData,
