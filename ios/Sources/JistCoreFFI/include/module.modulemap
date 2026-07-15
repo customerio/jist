@@ -1,0 +1,4 @@
+module jist_coreFFI {
+    header "jist_coreFFI.h"
+    export *
+}

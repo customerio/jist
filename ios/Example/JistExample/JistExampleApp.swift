@@ -19,38 +19,29 @@ struct JistExampleApp: App {
         }
     }
 
-    static func loadTemplates() -> [String: [JistTemplate]] {
-        guard let url = Bundle.main.url(forResource: "templates", withExtension: "json"),
-              let data = try? Data(contentsOf: url),
-              let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [:] }
+    // All parsing goes through jist-core (Rust) — the same parser as Android/web.
 
-        var result: [String: [JistTemplate]] = [:]
-        let decoder = JSONDecoder()
-        for (key, value) in raw where key != "$schema" {
-            guard let versions = value as? [Any] else { continue }
-            var templates: [JistTemplate] = []
-            for version in versions {
-                if let templateData = try? JSONSerialization.data(withJSONObject: version),
-                   let template = try? decoder.decode(JistTemplate.self, from: templateData) {
-                    templates.append(template)
-                }
-            }
-            result[key] = templates
-        }
-        return result
+    private static func loadJSON(_ resource: String) -> String? {
+        guard let url = Bundle.main.url(forResource: resource, withExtension: "json"),
+              let json = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        return json
+    }
+
+    static func loadTemplates() -> [String: [JistTemplate]] {
+        guard let json = loadJSON("templates"),
+              let registry = try? parseRegistryJson(json: json) else { return [:] }
+        return registry
     }
 
     static func loadData() -> [String: [String: JistValue]] {
-        guard let url = Bundle.main.url(forResource: "data", withExtension: "json"),
-              let data = try? Data(contentsOf: url),
-              let decoded = try? JSONDecoder().decode([String: [String: JistValue]].self, from: data) else { return [:] }
-        return decoded
+        guard let json = loadJSON("data"),
+              let all = try? parseDataJson(json: json) else { return [:] }
+        return all.compactMapValues { $0.objectValue }
     }
 
     static func loadTheme() -> [String: JistValue] {
-        guard let url = Bundle.main.url(forResource: "theme", withExtension: "json"),
-              let data = try? Data(contentsOf: url),
-              let decoded = try? JSONDecoder().decode([String: JistValue].self, from: data) else { return [:] }
-        return decoded
+        guard let json = loadJSON("theme"),
+              let theme = try? parseDataJson(json: json) else { return [:] }
+        return theme
     }
 }

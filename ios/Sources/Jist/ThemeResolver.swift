@@ -1,12 +1,15 @@
 import SwiftUI
 
+/// Thin SwiftUI adapter over the jist-core (Rust) `ThemeResolver`.
+///
+/// The cascade (state → dark → variant → base), hex-color parsing, and
+/// font-weight bucketing all live in core/jist-core/src/theme_resolver.rs —
+/// shared with Android. This file only maps Rust results onto SwiftUI types.
 public struct JistThemeResolver {
-    private let theme: [String: JistValue]
-    private let isDark: Bool
+    private let core: ThemeResolver
 
     public init(theme: [String: JistValue], isDark: Bool) {
-        self.theme = theme
-        self.isDark = isDark
+        self.core = ThemeResolver(theme: theme, isDark: isDark)
     }
 
     /// Resolve a theme property using the cascade:
@@ -19,27 +22,7 @@ public struct JistThemeResolver {
         property: String,
         state: String? = nil
     ) -> JistValue? {
-        if let state = state {
-            if isDark {
-                if let v = variant,
-                   let val = dig(["modes", "dark", type, v, "states", state, group, property]) { return val }
-                if let val = dig(["modes", "dark", type, "states", state, group, property]) { return val }
-            }
-            if let v = variant,
-               let val = dig([type, v, "states", state, group, property]) { return val }
-            if let val = dig([type, "states", state, group, property]) { return val }
-        }
-
-        if isDark {
-            if let v = variant,
-               let val = dig(["modes", "dark", type, v, group, property]) { return val }
-            if let val = dig(["modes", "dark", type, group, property]) { return val }
-        }
-        if let v = variant,
-           let val = dig([type, v, group, property]) { return val }
-        if let val = dig([type, group, property]) { return val }
-
-        return nil
+        core.resolve(typeName: type, variant: variant, group: group, property: property, state: state)
     }
 
     public func resolveColor(
@@ -50,9 +33,10 @@ public struct JistThemeResolver {
         state: String? = nil,
         fallback: Color
     ) -> Color {
-        guard let val = resolve(type: type, variant: variant, group: group, property: property, state: state),
-              let hex = val.stringValue else { return fallback }
-        return Color(hex: hex) ?? fallback
+        guard let c = core.resolveColor(typeName: type, variant: variant, group: group, property: property, state: state) else {
+            return fallback
+        }
+        return Color(red: c.r, green: c.g, blue: c.b, opacity: c.a)
     }
 
     public func resolveNumber(
@@ -63,9 +47,7 @@ public struct JistThemeResolver {
         state: String? = nil,
         fallback: CGFloat
     ) -> CGFloat {
-        guard let val = resolve(type: type, variant: variant, group: group, property: property, state: state),
-              let num = val.numberValue else { return fallback }
-        return CGFloat(num)
+        CGFloat(core.resolveNumber(typeName: type, variant: variant, group: group, property: property, state: state, fallback: Double(fallback)))
     }
 
     public func resolveInt(
@@ -74,33 +56,24 @@ public struct JistThemeResolver {
         group: String,
         property: String
     ) -> Int? {
-        guard let val = resolve(type: type, variant: variant, group: group, property: property),
-              let num = val.numberValue else { return nil }
-        return Int(num)
-    }
-
-    private func dig(_ path: [String]) -> JistValue? {
-        var current: JistValue = .object(theme)
-        for key in path {
-            guard let obj = current.objectValue, let next = obj[key] else { return nil }
-            current = next
-        }
-        return current
+        core.resolveInt(typeName: type, variant: variant, group: group, property: property).map(Int.init)
     }
 
     // MARK: - Font Weight
 
+    /// Buckets come from jist-core; this switch only maps the shared bucket
+    /// onto SwiftUI's platform enum.
     static func fontWeight(from value: CGFloat) -> Font.Weight {
-        switch value {
-        case ..<200: return .ultraLight
-        case ..<300: return .thin
-        case ..<400: return .light
-        case ..<500: return .regular
-        case ..<600: return .medium
-        case ..<700: return .semibold
-        case ..<800: return .bold
-        case ..<900: return .heavy
-        default:     return .black
+        switch fontWeightBucketFfi(value: Double(value)) {
+        case 100: return .ultraLight
+        case 200: return .thin
+        case 300: return .light
+        case 400: return .regular
+        case 500: return .medium
+        case 600: return .semibold
+        case 700: return .bold
+        case 800: return .heavy
+        default:  return .black
         }
     }
 }
@@ -108,28 +81,9 @@ public struct JistThemeResolver {
 // MARK: - Color Hex
 
 extension Color {
+    /// Parses `#RRGGBB` / `#RRGGBBAA` via jist-core's shared hex parser.
     init?(hex: String) {
-        var h = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        if h.hasPrefix("#") { h.removeFirst() }
-
-        var rgb: UInt64 = 0
-        guard Scanner(string: h).scanHexInt64(&rgb) else { return nil }
-
-        if h.count == 8 {
-            self.init(
-                red:     Double((rgb & 0xFF00_0000) >> 24) / 255,
-                green:   Double((rgb & 0x00FF_0000) >> 16) / 255,
-                blue:    Double((rgb & 0x0000_FF00) >> 8)  / 255,
-                opacity: Double( rgb & 0x0000_00FF)        / 255
-            )
-        } else if h.count == 6 {
-            self.init(
-                red:   Double((rgb & 0xFF0000) >> 16) / 255,
-                green: Double((rgb & 0x00FF00) >> 8)  / 255,
-                blue:  Double( rgb & 0x0000FF)        / 255
-            )
-        } else {
-            return nil
-        }
+        guard let c = parseHexColorFfi(hex: hex) else { return nil }
+        self.init(red: c.r, green: c.g, blue: c.b, opacity: c.a)
     }
 }

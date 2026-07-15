@@ -341,7 +341,7 @@ struct JistImageView: View {
     }
 
     private var fixedWidth: CGFloat? {
-        if case .fixed(let w) = node.width { return w }
+        if case .fixed(let w) = node.width { return CGFloat(w) }
         return nil
     }
 
@@ -360,7 +360,7 @@ struct JistImageView: View {
                     EmptyView()
                 }
             }
-            .frame(width: fixedWidth, height: node.height)
+            .frame(width: fixedWidth, height: node.height.map { CGFloat($0) })
             .frame(maxWidth: isFill ? .infinity : nil)
             .clipShape(RoundedRectangle(cornerRadius: node.borderRadius ?? 0))
             .accessibilityLabel(data["title"]?.stringValue ?? "")
@@ -420,7 +420,7 @@ struct JistDynamicLayoutView: View {
     @ViewBuilder
     private func itemView(_ item: JistValue) -> some View {
         let itemData = item.objectValue ?? [:]
-        JistNodeView(node: node.template, data: itemData, resolver: resolver, formatDate: formatDate, onAction: onAction, templates: templates, templateDepth: templateDepth)
+        JistNodeView(node: node.templateNode ?? .unknown, data: itemData, resolver: resolver, formatDate: formatDate, onAction: onAction, templates: templates, templateDepth: templateDepth)
     }
 
     private var vAlignment: HorizontalAlignment {

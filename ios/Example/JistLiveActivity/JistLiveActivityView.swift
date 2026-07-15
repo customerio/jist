@@ -27,9 +27,10 @@ struct JistLiveActivityWidget: Widget {
 
     @ViewBuilder
     private func lockScreenView(context: ActivityViewContext<JistActivityAttributes>) -> some View {
-        if let template = decode(context.attributes.templateJSON, as: JistTemplate.self),
-           let theme = decode(context.attributes.themeJSON, as: [String: JistValue].self),
-           let data = decode(context.state.dataJSON, as: [String: JistValue].self) {
+        // Parsing goes through jist-core (Rust) — the same parser as Android/web.
+        if let template = try? parseTemplateJson(json: context.attributes.templateJSON),
+           let theme = try? parseDataJson(json: context.attributes.themeJSON),
+           let data = try? parseDataJson(json: context.state.dataJSON) {
             JistView(
                 name: "liveActivity",
                 templates: ["liveActivity": [template]],
@@ -37,9 +38,5 @@ struct JistLiveActivityWidget: Widget {
                 theme: theme
             )
         }
-    }
-
-    private func decode<T: Decodable>(_ json: String, as type: T.Type) -> T? {
-        try? JSONDecoder().decode(type, from: Data(json.utf8))
     }
 }
