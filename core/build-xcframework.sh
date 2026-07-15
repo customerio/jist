@@ -51,6 +51,8 @@ mv "$HEADERS/jist_coreFFI.modulemap" "$HEADERS/module.modulemap"
 rm -f "$HEADERS/jist_core.swift"
 
 say "Lipo: universal simulator + macOS libraries"
+mkdir -p "$OUT/ios"
+cp target/aarch64-apple-ios/release/libjist_core.a "$OUT/ios/libjist_core.a"
 lipo -create \
     target/aarch64-apple-ios-sim/release/libjist_core.a \
     target/x86_64-apple-ios/release/libjist_core.a \
@@ -60,9 +62,15 @@ lipo -create \
     target/x86_64-apple-darwin/release/libjist_core.a \
     -output "$OUT/macos/libjist_core.a"
 
+say "Stripping debug info (linker symbols are kept; codegen is untouched)"
+for lib in "$OUT/ios/libjist_core.a" "$OUT/sim/libjist_core.a" "$OUT/macos/libjist_core.a"; do
+    strip -S -x "$lib" 2>/dev/null || true
+    echo "  $(basename "$(dirname "$lib")")/libjist_core.a → $(du -h "$lib" | cut -f1)"
+done
+
 say "Assembling $NAME.xcframework"
 xcodebuild -create-xcframework \
-    -library target/aarch64-apple-ios/release/libjist_core.a -headers "$HEADERS" \
+    -library "$OUT/ios/libjist_core.a" -headers "$HEADERS" \
     -library "$OUT/sim/libjist_core.a" -headers "$HEADERS" \
     -library "$OUT/macos/libjist_core.a" -headers "$HEADERS" \
     -output "$OUT/$NAME.xcframework"

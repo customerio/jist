@@ -8,6 +8,10 @@
 // Current status: scaffolding only. Only `jist_version()` is exposed as a
 // smoke test for the binding pipeline. Real logic ports are follow-up PRs.
 
+// UniFFI scaffolding serves the Swift/Kotlin bindings only. Keeping it out of
+// the wasm build matters: its `#[no_mangle]` exports would otherwise pin the
+// whole FFI machinery into the .wasm where nothing can ever call it.
+#[cfg(not(target_arch = "wasm32"))]
 uniffi::include_scaffolding!("jist_core");
 
 /// Canonical template model + parsing. The single source of truth for the

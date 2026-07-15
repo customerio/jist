@@ -24,7 +24,7 @@
     "./dist/jist.css"
   ],
   "scripts": {
-    "build:wasm": "cd ../core/jist-core && cargo build --release --target wasm32-unknown-unknown && wasm-bindgen --target web --out-dir ../../web/src/wasm --out-name jist_core ../target/wasm32-unknown-unknown/release/jist_core.wasm",
+    "build:wasm": "cd ../core/jist-core && cargo build --release --target wasm32-unknown-unknown && wasm-bindgen --target web --out-dir ../../web/src/wasm --out-name jist_core ../target/wasm32-unknown-unknown/release/jist_core.wasm && (wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int --strip-debug --strip-producers ../../web/src/wasm/jist_core_bg.wasm -o ../../web/src/wasm/jist_core_bg.wasm || echo 'wasm-opt not installed — shipping unoptimized wasm')",
     "build": "node build.cjs",
     "dev": "node dev.cjs",
     "test": "playwright test",
