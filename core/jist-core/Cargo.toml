@@ -33,6 +33,8 @@ uniffi = { version = "0.28", features = ["bindgen-tests"] }
 # wasm-pack / wasm-bindgen path (web target)
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"
+serde-wasm-bindgen = "0.6"
+tsify-next = { version = "0.5.6", features = ["js"] }
 
 [package.metadata.wasm-pack.profile.release]
 # wasm-opt bundled with wasm-pack 0.14 is too old for Rust 1.93's bulk-memory
