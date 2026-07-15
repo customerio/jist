@@ -17,23 +17,20 @@ let package = Package(
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0")
     ],
     targets: [
-        // C module for the UniFFI-generated jist-core bindings. Symbols come
-        // from libjist_core.a (built from core/ — see core/build-all.sh),
-        // staged in ios/Libs for local development. Distribution builds will
-        // ship an XCFramework instead.
-        .target(
+        // jist-core (Rust) compiled for Apple platforms, packaged as an
+        // XCFramework by core/build-xcframework.sh. Local development uses
+        // this path-based target; releases swap it for
+        // .binaryTarget(name:url:checksum:) pointing at the zip attached to
+        // the GitHub release (the build script prints the checksum).
+        .binaryTarget(
             name: "JistCoreFFI",
-            path: "ios/Sources/JistCoreFFI"
+            path: "ios/Libs/JistCore.xcframework"
         ),
         .target(
             name: "Jist",
             dependencies: ["JistCoreFFI"],
             path: "ios/Sources/Jist",
-            swiftSettings: [.swiftLanguageMode(.v6)],
-            linkerSettings: [
-                .unsafeFlags(["-Lios/Libs"]),
-                .linkedLibrary("jist_core")
-            ]
+            swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
             name: "JistTests",
