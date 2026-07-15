@@ -1,6 +1,6 @@
 # Jist Core Migration — Shared Rust Core via UniFFI
 
-**Status:** In progress — PR 1 landed + PR 2 scaffold landed, awaiting review before porting logic.
+**Status:** Core migration complete on all three platforms (2026-07-15). Models, parsing, JSON value type, and the theme resolver live in `jist-core` (Rust); iOS/Android/Web consume generated bindings. All four test suites green. Remaining: FontResolver growth (PR 5), validator (PR 6), CI + distribution packaging.
 **Branch:** `feat/jist-core-migration`
 **Owner:** TBD
 
@@ -10,11 +10,48 @@
 |---|---|---|
 | PR 1 — Tagged schemas + validator | ✅ Landed | `746ee89` |
 | PR 2a — Rust workspace + UniFFI hello world scaffold | ✅ Landed | `cc06339` |
-| PR 2b — Integrate scaffold into iOS/Android/Web renderers | ⏳ Next |
-| PR 3 — Port Models to Rust | ⏳ Pending |
-| PR 4 — Port ThemeResolver to Rust | ⏳ Pending |
-| PR 5 — Port FontResolver to Rust | ⏳ Pending |
+| PR 3a — Canonical Models + parser in Rust (`core/jist-core/src/models.rs`) | ✅ 16 tests pass | — |
+| PR 3b (web) — Web consumes Rust model via wasm; inline TS types deleted | ✅ 16/16 snapshots | — |
+| PR 3b (iOS) — iOS consumes Rust model via UniFFI; `Models.swift` + `JistValue.swift` deleted | ✅ 16/16 snapshots | — |
+| PR 3b (Android) — Android consumes Rust model via UniFFI; `Models.kt` deleted | ✅ 16/16 Paparazzi vs committed baselines | — |
+| PR 4 — ThemeResolver in Rust (cascade + hex + font-weight buckets); Swift/Kotlin resolvers are thin shims | ✅ 7 Rust tests + both snapshot suites | — |
+| PR 5 — Port FontResolver to Rust | ⏳ Pending (weight table already in Rust; family/fallback logic when it grows) |
 | PR 6 — Template validator to Rust | ⏳ Pending |
+| Packaging — XCFramework / AAR-embedded `.so` / npm, CI Rust builds | ⏳ Next (local dev uses `ios/Libs` + `jniLibs` + `web/src/wasm`) |
+
+### Measured result (2026-07-15)
+
+Hand-written, per-platform model/value/resolver code, before → after:
+
+| Platform | Before | After | Δ |
+|---|---|---|---|
+| iOS (`Models.swift` + `JistValue.swift` + `ThemeResolver.swift`) | 397 | 133 (shim + conveniences) | **−264** |
+| Android (`Models.kt` + `ThemeResolver.kt`) | 281 | 145 (shim + aliases) | **−136** |
+| Web (inline model types in `jist-renderer.ts`) | 410 | 351 | **−59** |
+| **Per-platform total** | **1,088** | **429** | **−659 (−61%)** |
+
+Replaced by **one** Rust source: 751 production LOC (`models.rs` 525 + `theme_resolver.rs` 226) plus 369 LOC of unit tests — coverage that previously did not exist on any platform (23 tests, run on every build, against the real `shared/` fixtures).
+
+Verification (all on 2026-07-15):
+- `cargo test -p jist-core` → 23/23
+- iOS `swift test` (macOS host, snapshot A/B against pre-change output) → 16/16 byte-identical
+- Android `./gradlew :jist:verifyPaparazziDebug` → 16/16 **against the committed baselines**
+- Web Playwright → 16/16
+- Android example app compiles (fixed pre-existing missing `res/raw` — it had never compiled)
+
+Artifact sizes: web wasm 213 KB; Android `.so` 571 KB (arm64, stripped) — above the ≤500 KB target; the main lever is cfg-ing the UniFFI scaffolding out of the wasm build and trimming `serde_json`. Tracked as follow-up.
+
+### Reality re-audit (2026-07-14)
+
+Re-measured against current `main`. The pitch holds — more strongly than at the time of the original before/after doc:
+
+- **The theme cascade is copy-paste across languages.** `ThemeResolver.swift:22-42` and `ThemeResolver.kt:23-45` are the same seven-branch dark/variant/state fallback, statement for statement. Every future branch must be hand-added twice.
+- **The image `width` field has already drifted into three representations** of one JSON concept: iOS enum `JistImageWidth`, Android untyped `JsonPrimitive` + getters, Web `number | "fill"` union. Drift the pitch predicted has already happened.
+- **Font-weight table is a latent trap:** Swift maps `<200 → ultraLight`, Kotlin maps `<200 → Thin`. They correspond only because a human knows iOS `ultraLight` ≈ Android `Thin` ≈ weight 100. Nothing enforces it.
+- **Hex color parsing** (6/8-digit) is reimplemented in Swift `Color(hex:)` and Kotlin `parseHexColor`.
+- **`missing type` handling already diverges:** Swift throws, Kotlin returns `Unknown`, Web skips. Rust unifies this by construction (`models.rs` → `JistNode::Unknown` for unknown `type`).
+
+Verdict: porting Models + ThemeResolver collapses ~530 LOC of genuinely redundant logic to one and closes four live drift risks. Renderers (~1,375 LOC) correctly stay native.
 
 ### What's been verified locally
 
@@ -169,26 +206,56 @@ Each PR is independently mergeable and additive. If we stop at any point, what w
 
 ---
 
-### **PR 3** — Port `Models` to Rust *(replace quicktype output)*
+### **PR 3** — Port `Models` to Rust
+
+Split into two independently reviewable halves. **3a is written** (`core/jist-core/src/models.rs`); 3b needs a compiler.
+
+#### PR 3a — Canonical model + parser *(written 2026-07-14)*
+
+**Delivered**
+- `core/jist-core/src/models.rs`: `JistTemplate`, the `JistNode` union (internally tagged on `type`), every node type, `JistSpacing`, the `ImageWidth` union (`number | "fill"`), `JistActionEvent`, `JistMode`.
+- `parse_template()` and `parse_registry()` via `serde_json`.
+- Unknown `type` → `JistNode::Unknown` (unifies the Swift-throws / Kotlin-Unknown / Web-skips divergence). Unknown *properties* on known nodes are ignored (forward compat).
+- Unit-test suite covering every node type, the width union (fill/fixed/absent), meta preservation, forward-compat, serialize→parse round-trip, and **the real `shared/templates.json` registry** (all 9 templates).
+
+**Verification status — validated 2026-07-14**
+- ✅ `cargo test -p jist-core` → **15 passed, 0 failed** on `rustc 1.93.1` (14 model tests + the existing version smoke test).
+- ✅ Cross-compiles for platform targets with the new module: `aarch64-apple-ios` (`libjist_core.a`, 36M unstripped) and `wasm32-unknown-unknown` (`jist_core.wasm`, 52K).
+- ✅ `cargo clippy` clean for `models.rs`/`lib.rs`. (One pre-existing lint remains in UniFFI-*generated* scaffolding under `-D warnings`; not introduced by PR 3.)
+- Reproduce:
+  ```bash
+  cd core
+  cargo test  -p jist-core
+  cargo build -p jist-core --target aarch64-apple-ios     --release
+  cargo build -p jist-core --target wasm32-unknown-unknown --release
+  ```
+
+#### PR 3b (web) — Web consumes the Rust model via wasm *(done, validated 2026-07-14)*
+
+**Delivered**
+- `parse_template(json)` exposed from `jist-core` to the web via `wasm-bindgen` (`lib.rs`, cfg-gated to `wasm32`). The `<jist-template>` element initializes the wasm once (top-level `await`), then parses/normalizes every template through Rust on the synchronous render path.
+- Model **types** generated from the Rust structs via `tsify` (cfg-gated to `wasm32` so iOS/host builds are untouched). `web/src/jist-renderer.ts` deleted its hand-written node interfaces and now imports/re-exports the generated types.
+
+**Result (measured)**
+- `web/src/jist-renderer.ts`: **410 → 351 lines** (−59). Net **−45 lines** of hand-maintained TS across the web source; **~92 lines of hand-written model types → 0** (now generated from Rust).
+- Web Playwright snapshots: **16/16 pass**, byte-for-byte — rendering through the Rust-parsed tree is identical.
+- Host `cargo test` (15/15) and the iOS cross-build stay green — tsify never enters the non-wasm dependency tree.
+- `jist_core_bg.wasm` ≈ 196 KB unoptimized (UniFFI scaffolding is currently compiled into the wasm too; `wasm-opt` is disabled. Cfg-gating UniFFI out of wasm + enabling `wasm-opt` is a follow-up size win).
+
+#### PR 3b (iOS/Android) — Expose the model across UniFFI *(next)*
 
 **Scope**
-- Define template, theme, and data types as Rust structs in `jist-core`.
-- UniFFI exposes them as idiomatic Swift/Kotlin/TS types.
-- Remove quicktype codegen introduced in PR 1 (Rust now owns type generation for the three platforms).
-- JSON parsing moves into Rust via `serde_json`.
-- Platform renderers consume Rust-provided types; all three test suites continue to pass.
+- UniFFI (Swift/Kotlin): expose `parse_template(json) -> JistTemplate` returning the typed tree. The recursive `JistNode` maps to a UDL `[Enum] interface` / Rust recursive enum.
+- Platform renderers consume the Rust-provided tree; delete `Models.swift`, `Models.kt`, `JistValue.swift`.
 
-**Why**
-- Single canonical type definition.
-- Parsing + validation consolidated in one place.
-- Sets the pattern every subsequent port will follow.
+**Key FFI decision:** arbitrary JSON (`meta`, action `data`) crosses the boundary as a **raw JSON `String`**, not a typed map — UniFFI/UDL has no `Any`/`JsonObject` type, and the renderers only forward these bags to host callbacks. Keep the Rust model rich (`serde_json::Value`) and stringify at the FFI edge. (On web this is already handled: `meta` surfaces as `Record<string, unknown>`.)
 
 **Done criteria**
-- `shared/` JSON fixtures parse through Rust and produce equivalent in-memory representations on all three platforms.
+- `shared/` fixtures parse through Rust and produce equivalent in-memory trees on iOS + Android.
 - Snapshot tests pass unchanged.
-- Old hand-written or quicktype-generated model files deleted.
+- Hand-written model files deleted.
 
-**Estimated size:** Medium. ~1–2 weeks.
+**Estimated size:** 3a — done. 3b web — done. 3b iOS/Android — Medium, ~1 week (recursive UniFFI enum is the main risk).
 
 ---
 
