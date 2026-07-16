@@ -242,7 +242,7 @@ struct JistActionView: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
+        .jistAddTraits(.isButton)
     }
 }
 
@@ -281,7 +281,7 @@ struct JistHeadingView: View {
                 bottom: resolver.resolveNumber(type: "heading", variant: variant, group: "margin", property: "bottom", fallback: 0),
                 trailing: resolver.resolveNumber(type: "heading", variant: variant, group: "margin", property: "right", fallback: 0)
             ))
-            .accessibilityAddTraits(.isHeader)
+            .jistAddTraits(.isHeader)
     }
 
     private func defaultSize(_ v: String) -> CGFloat {
@@ -410,7 +410,7 @@ struct JistButtonView: View {
                 label: label, stretch: stretch
             ))
             .disabled(isDisabled)
-            .onHover { isHovered = $0 }
+            .jistOnHover { isHovered = $0 }
             .padding(EdgeInsets(
                 top: resolver.resolveNumber(type: "button", variant: node.variant, group: "margin", property: "top", fallback: 0),
                 leading: resolver.resolveNumber(type: "button", variant: node.variant, group: "margin", property: "left", fallback: 0),
@@ -516,7 +516,7 @@ struct JistImageView: View {
                 .frame(width: fixedWidth, height: node.height)
                 .frame(maxWidth: isFill ? .infinity : nil)
                 .clipShape(RoundedRectangle(cornerRadius: node.borderRadius ?? resolver.resolveNumber(type: "image", variant: node.variant, group: "border", property: "radius", fallback: 0)))
-                .accessibilityLabel(data["title"]?.stringValue ?? "")
+                .jistAccessibilityLabel(data["title"]?.stringValue ?? "")
                 .padding(EdgeInsets(
                     top: resolver.resolveNumber(type: "image", variant: node.variant, group: "padding", property: "top", fallback: 0),
                     leading: resolver.resolveNumber(type: "image", variant: node.variant, group: "padding", property: "left", fallback: 0),
@@ -536,7 +536,7 @@ struct JistImageView: View {
     private func imageContent(url: URL) -> some View {
         if let provider = imageProvider, let image = provider(url) {
             applyFit(image.resizable())
-        } else {
+        } else if #available(iOS 15, macOS 12, *) {
             AsyncImage(url: url) { phase in
                 switch phase {
                 case .success(let image):
@@ -544,11 +544,25 @@ struct JistImageView: View {
                 case .failure:
                     Color.gray.opacity(0.2)
                 case .empty:
-                    ProgressView()
+                    JistSpinner()
                 @unknown default:
                     EmptyView()
                 }
             }
+        } else {
+            // iOS 13/14 fallback: AsyncImage is iOS 15+, so load via URLSession.
+            JistAsyncImage(url: url) { image in
+                applyFit(image.resizable())
+            } placeholder: {
+                JistSpinner()
+            } failure: {
+                Color.gray.opacity(0.2)
+            }
+            // iOS 13/14 has no `.onChange(of:)` (iOS 14+) and `.onAppear` doesn't re-fire on an
+            // in-place data update, so key the view on `url`: a new URL yields a fresh identity (fresh
+            // loader + `.loading`) that re-fires `.onAppear` to load it. The loader dedups repeated
+            // appearances for the same URL.
+            .id(url)
         }
     }
 
@@ -562,6 +576,118 @@ struct JistImageView: View {
         default:
             image.scaledToFit()
         }
+    }
+}
+
+// MARK: - Async Image (iOS 13/14 backport)
+
+/// Loads a remote image for the iOS 13/14 `AsyncImage` backport with `AsyncImage`-like semantics:
+/// exactly one request per URL (repeated appearances during an in-flight load don't restart it), a
+/// reload when the URL changes, and a stale in-flight result discarded if the URL changed meanwhile.
+///
+/// The data fetch is injected so this load/dedup logic is unit-testable without the network or a
+/// SwiftUI host — important because the `JistAsyncImage` view wrapper below only runs when
+/// `#available(iOS 15, …)` is false, so it can't be exercised on the iOS 15+ CI simulator.
+@MainActor
+final class JistImageLoader {
+    enum Phase {
+        case loading
+        case success(Image)
+        case failure
+    }
+
+    /// Fetches raw bytes for a URL, delivering `nil` on any failure. Injected for testing. The
+    /// completion is `@Sendable` because the default fetch resolves it on a background URLSession queue.
+    typealias DataFetch = (URL, @escaping @Sendable (Data?) -> Void) -> Void
+
+    private let fetch: DataFetch
+    /// URL of the current/most-recent request; drives dedup and stale-result rejection.
+    private var requestedURL: URL?
+    private var onPhase: ((Phase) -> Void)?
+
+    init(fetch: @escaping DataFetch = JistImageLoader.urlSessionFetch) {
+        self.fetch = fetch
+    }
+
+    /// Starts a load for `url` unless a load for the same URL is already the current one (dedup of
+    /// repeated `onAppear`s during an in-flight request). A different URL supersedes the previous load.
+    /// `onPhase` is invoked on the main actor: `.loading` immediately for a new URL, then
+    /// `.success`/`.failure` when it resolves.
+    func load(url: URL, onPhase: @escaping (Phase) -> Void) {
+        guard url != requestedURL else { return }
+        requestedURL = url
+        self.onPhase = onPhase
+        onPhase(.loading)
+        fetch(url) { [weak self] data in
+            // Background queue. `data` is Sendable; hop to the main actor and decode + deliver there,
+            // so a non-Sendable `Image` is never created off-main or sent across threads.
+            Task { @MainActor [weak self] in
+                self?.deliver(data, for: url)
+            }
+        }
+    }
+
+    private func deliver(_ data: Data?, for url: URL) {
+        // Drop a late result from a superseded URL so it can't clobber the current image.
+        guard requestedURL == url else { return }
+        onPhase?(JistImageLoader.decode(data))
+    }
+
+    private static func decode(_ data: Data?) -> Phase {
+        // Only the UIKit decode runs at runtime: macOS 12+ takes the native AsyncImage path, so this
+        // backport is never instantiated there. The #else only keeps non-UIKit builds compiling.
+        #if canImport(UIKit)
+        if let data, let image = UIImage(data: data) { return .success(Image(uiImage: image)) }
+        return .failure
+        #else
+        return .failure
+        #endif
+    }
+
+    private static let urlSessionFetch: DataFetch = { url, completion in
+        URLSession.shared.dataTask(with: url) { data, _, _ in completion(data) }.resume()
+    }
+}
+
+/// iOS 13/14-compatible replacement for SwiftUI's `AsyncImage` (iOS 15+). Thin view wrapper over
+/// `JistImageLoader` (which holds the testable load/dedup logic): shows the placeholder while loading,
+/// the resolved image on success, and the failure view on error.
+private struct JistAsyncImage<Content: View, Placeholder: View, Failure: View>: View {
+    let url: URL
+    let content: (Image) -> Content
+    let placeholder: () -> Placeholder
+    let failure: () -> Failure
+
+    @State private var phase: JistImageLoader.Phase = .loading
+    // Held in @State (not @StateObject, which is iOS 14+) so the loader — and its per-URL dedup state —
+    // survives body re-evaluations at the same view identity. `.id(url)` at the call site gives a fresh
+    // identity (and a fresh loader) when the URL changes.
+    @State private var loader = JistImageLoader()
+
+    init(
+        url: URL,
+        @ViewBuilder content: @escaping (Image) -> Content,
+        @ViewBuilder placeholder: @escaping () -> Placeholder,
+        @ViewBuilder failure: @escaping () -> Failure
+    ) {
+        self.url = url
+        self.content = content
+        self.placeholder = placeholder
+        self.failure = failure
+    }
+
+    var body: some View {
+        Group {
+            switch phase {
+            case .success(let image):
+                content(image)
+            case .failure:
+                failure()
+            case .loading:
+                placeholder()
+            }
+        }
+        .onAppear { loader.load(url: url) { phase = $0 } }
     }
 }
 
@@ -707,14 +833,93 @@ struct MarginModifier: ViewModifier {
 
 // MARK: - Line Height Helper
 
-/// Applies lineHeightMultiple via NSParagraphStyle so the multiplier is relative
-/// to the font's natural line metrics — consistent with how iOS text layout works.
-/// Falls back to plain Text when lineHeight is 0 (reset/unset).
+/// Applies `lineHeightMultiple` via `NSParagraphStyle` so the multiplier is relative to the font's
+/// natural line metrics — consistent with how iOS text layout works.
+///
+/// Two DISTINCT cases return plain `Text` and must not be conflated:
+///  1. `lineHeightMultiple == 0` — intentional reset/unset: no custom line height was requested.
+///  2. iOS 13/14 with a positive value — `AttributedString`/`Text(AttributedString)` are iOS 15+ and
+///     there is no SwiftUI API to apply a paragraph `lineHeightMultiple` to `Text` on iOS 13/14, so
+///     the multiplier is dropped and text renders at the font's natural line height. This is an
+///     ACCEPTED iOS 13/14 typography limitation (validated on-device), NOT a reset — line spacing can
+///     differ slightly from iOS 15+. A `lineSpacing` approximation would require returning a `View`
+///     instead of `Text`; intentionally not done for this backport.
 private func styledText(_ string: String, lineHeightMultiple: CGFloat) -> Text {
-    guard lineHeightMultiple > 0 else { return Text(string) }
-    var attributed = AttributedString(string)
-    let paragraphStyle = NSMutableParagraphStyle()
-    paragraphStyle.lineHeightMultiple = lineHeightMultiple
-    attributed.paragraphStyle = paragraphStyle
-    return Text(attributed)
+    guard lineHeightMultiple > 0 else { return Text(string) } // case 1: reset/unset
+    if #available(iOS 15, macOS 12, *) {
+        var attributed = AttributedString(string)
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineHeightMultiple = lineHeightMultiple
+        attributed.paragraphStyle = paragraphStyle
+        return Text(attributed)
+    } else {
+        return Text(string)
+    }
 }
+
+// MARK: - iOS 13/14 compatibility helpers
+
+/// `accessibilityAddTraits` / `accessibilityLabel` on `View` are iOS 14+; `onHover`
+/// is iOS 13.4+. These wrappers keep the call sites clean while supporting the iOS 13
+/// deployment floor — using the current spelling where available and the older (but
+/// since-13.0) `accessibility(...)` spelling on iOS 13, so VoiceOver traits/labels are
+/// preserved on every supported OS (not dropped).
+extension View {
+    func jistAddTraits(_ traits: AccessibilityTraits) -> some View {
+        if #available(iOS 14, macOS 11, *) {
+            return AnyView(self.accessibilityAddTraits(traits))
+        } else {
+            // Deprecated spelling, available since iOS 13.0 — keeps the traits for VoiceOver on
+            // iOS 13 rather than dropping them. Remove when the deployment floor reaches iOS 14.
+            return AnyView(self.accessibility(addTraits: traits))
+        }
+    }
+
+    func jistAccessibilityLabel(_ label: String) -> some View {
+        if #available(iOS 14, macOS 11, *) {
+            return AnyView(self.accessibilityLabel(label))
+        } else {
+            // Deprecated spelling, available since iOS 13.0 — keeps the label for VoiceOver on
+            // iOS 13 rather than dropping it. Remove when the deployment floor reaches iOS 14.
+            return AnyView(self.accessibility(label: Text(label)))
+        }
+    }
+
+    func jistOnHover(_ perform: @escaping (Bool) -> Void) -> some View {
+        // Returns AnyView so the availability branch doesn't require the
+        // ViewBuilder `buildLimitedAvailability` machinery (itself iOS 14+).
+        if #available(iOS 13.4, macOS 10.15, *) {
+            return AnyView(self.onHover(perform: perform))
+        } else {
+            return AnyView(self)
+        }
+    }
+}
+
+/// iOS 13/14-compatible spinner. `ProgressView` is iOS 14+, so on iOS 13 we fall
+/// back to a UIKit `UIActivityIndicatorView` wrapped as a representable.
+struct JistSpinner: View {
+    var body: some View {
+        if #available(iOS 14, macOS 11, *) {
+            return AnyView(ProgressView())
+        } else {
+            #if canImport(UIKit)
+            return AnyView(JistActivityIndicator())
+            #else
+            return AnyView(Color.gray.opacity(0.2))
+            #endif
+        }
+    }
+}
+
+#if canImport(UIKit)
+private struct JistActivityIndicator: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIActivityIndicatorView {
+        let view = UIActivityIndicatorView(style: .medium)
+        view.startAnimating()
+        return view
+    }
+
+    func updateUIView(_ uiView: UIActivityIndicatorView, context: Context) {}
+}
+#endif
