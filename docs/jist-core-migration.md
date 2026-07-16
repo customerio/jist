@@ -39,7 +39,7 @@ Verification (all on 2026-07-15):
 - Web Playwright → 16/16
 - Android example app compiles (fixed pre-existing missing `res/raw` — it had never compiled)
 
-Artifact sizes: web wasm 213 KB; Android `.so` 571 KB (arm64, stripped) — above the ≤500 KB target; the main lever is cfg-ing the UniFFI scaffolding out of the wasm build and trimming `serde_json`. Tracked as follow-up.
+Artifact sizes (2026-07-16, measured): iOS app-size delta **1,022 KB stripped** (bare 67 KB → with Jist 1,089 KB; the pre-Rust pure-Swift Jist added 305 KB, so the Rust premium is ~717 KB — probe: scratchpad size-probe, release device build, strip -STx). Android `.so` 573 KB/ABI stripped; web wasm 175 KB raw / ~79 KB gzip. KMP reference points for comparison: hello-world K/N iOS framework ≈6 MB; Compose MP adds ≈4–9 MB (Skia).
 
 ### Reality re-audit (2026-07-14)
 
