@@ -12,6 +12,22 @@ private struct FontCacheKey: Hashable {
 
 private nonisolated(unsafe) var fontCache: [FontCacheKey: Font] = [:]
 
+/// Splits a CSS font-family stack into individual family names.
+///
+/// Trims whitespace and strips the surrounding single/double quotes the portal emits
+/// around custom families (e.g. `"'Abril Fatface', sans-serif"`). Browsers strip these
+/// quotes; we must too, otherwise a quoted custom family never matches a registered font
+/// and always falls through to the system font.
+func parseFontStack(_ family: String) -> [String] {
+    let quotes = CharacterSet(charactersIn: "\"'")
+    return family.split(separator: ",").map { component -> String in
+        component
+            .trimmingCharacters(in: .whitespaces)
+            .trimmingCharacters(in: quotes)
+            .trimmingCharacters(in: .whitespaces)
+    }.filter { !$0.isEmpty }
+}
+
 #if canImport(UIKit)
 import UIKit
 
@@ -32,7 +48,7 @@ extension JistThemeResolver {
         let key = FontCacheKey(family: family, size: size, weight: rawWeight)
         if let cached = fontCache[key] { return cached }
 
-        let names = family.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let names = parseFontStack(family)
         let font: Font = {
             for name in names {
                 let variants = UIFont.fontNames(forFamilyName: name)
@@ -90,7 +106,7 @@ extension JistThemeResolver {
         let key = FontCacheKey(family: family, size: size, weight: rawWeight)
         if let cached = fontCache[key] { return cached }
 
-        let names = family.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let names = parseFontStack(family)
         let font: Font = {
             for name in names {
                 let variants = NSFontManager.shared.availableMembers(ofFontFamily: name)?
