@@ -67,6 +67,15 @@ val LocalJistImageProvider = staticCompositionLocalOf<((String) -> ImageBitmap?)
 internal val LocalJistFontCache = staticCompositionLocalOf<Map<String, FontFamily>> { emptyMap() }
 
 /**
+ * Normalises a single font-family name for case-insensitive matching: trims whitespace,
+ * strips the surrounding single/double quotes the portal emits around custom families
+ * (e.g. `'Abril Fatface'` in `"'Abril Fatface', sans-serif"`), then lowercases. Browsers
+ * strip these quotes; without this a quoted custom family never matches an injected font.
+ */
+internal fun normalizeFontName(name: String): String =
+    name.trim().trim('\'', '"').trim().lowercase()
+
+/**
  * Walks the theme JSON collecting all fontFamily CSS stacks, then resolves each stack against
  * [fonts] with case-insensitive name matching. Returns a map keyed by raw stack string so
  * [LocalJistFontCache] lookups remain O(1) at render time.
@@ -76,14 +85,14 @@ internal val LocalJistFontCache = staticCompositionLocalOf<Map<String, FontFamil
  */
 internal fun buildFontCache(theme: JsonObject, fonts: Map<String, FontFamily>): Map<String, FontFamily> {
     if (fonts.isEmpty()) return emptyMap()
-    // Normalise keys once: lowercase, collapse whitespace.
-    val normalized = fonts.entries.associate { (k, v) -> k.trim().lowercase() to v }
+    // Normalise keys once: trim whitespace, strip surrounding quotes, lowercase.
+    val normalized = fonts.entries.associate { (k, v) -> normalizeFontName(k) to v }
 
     val cache = mutableMapOf<String, FontFamily>()
 
     fun resolve(stack: String): FontFamily? {
         for (name in stack.split(",")) {
-            normalized[name.trim().lowercase()]?.let { return it }
+            normalized[normalizeFontName(name)]?.let { return it }
         }
         return null
     }
