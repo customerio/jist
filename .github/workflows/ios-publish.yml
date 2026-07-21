@@ -1,0 +1,69 @@
+name: Publish iOS
+
+# Triggered only by a bare vX.Y.Z tag (created by "Release iOS"). Publishes the Jist pod to the
+# CocoaPods trunk. Swift Package Manager needs no publish step — the git tag is the SPM release.
+# The `v*` filter does not match web-v* / android-v*, and this never runs on a push/merge to main.
+on:
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: publish-ios
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository_owner == 'customerio'
+    runs-on: macos-15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # full history so the tag's commit can be checked for main ancestry below
+
+      - name: Verify the tagged commit is on main
+        # A matching vX.Y.Z tag pushed from any branch would otherwise pass the version check and
+        # publish that branch's code. Only publish tags whose commit is actually on main.
+        run: |
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag $GITHUB_REF_NAME ($GITHUB_SHA) is not on main; refusing to publish."
+            exit 1
+          fi
+
+      - name: Derive version from tag
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::Tag $GITHUB_REF_NAME is not vX.Y.Z"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the tag matches the podspec version
+        run: |
+          committed=$(grep -E 'spec\.version[[:space:]]*=' Jist.podspec | sed -E 's/.*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')
+          if [ "$committed" != "${{ steps.version.outputs.version }}" ]; then
+            echo "::error::Tag version ${{ steps.version.outputs.version }} != podspec spec.version $committed"
+            exit 1
+          fi
+
+      - name: Lint the podspec
+        run: pod lib lint Jist.podspec --allow-warnings
+
+      - name: Push to CocoaPods trunk
+        # Inlined single-pod push (mirrors customerio-ios/scripts/push-cocoapod.sh): an already-published
+        # version is treated as a successful retry; any other failure fails the job. The first push from
+        # the Customer.io trunk account also claims the unclaimed `Jist` pod name.
+        env:
+          COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
+        run: |
+          set +e
+          OUTPUT=$(pod trunk push Jist.podspec --allow-warnings 2>&1)
+          echo "$OUTPUT"
+          if echo "$OUTPUT" | grep -qE "successfully published|Unable to accept duplicate entry for"; then
+            echo "Jist ${{ steps.version.outputs.version }} is on the CocoaPods trunk." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "::error::pod trunk push failed for Jist ${{ steps.version.outputs.version }}."
+          exit 1
