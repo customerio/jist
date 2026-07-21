@@ -68,7 +68,9 @@ jobs:
       - name: Bump, commit, tag, and push
         if: ${{ !inputs.dry_run }}
         run: |
-          sed -i -E "s/(spec\.version[[:space:]]*=[[:space:]]*)\"[0-9]+\.[0-9]+\.[0-9]+\"/\1\"${{ steps.version.outputs.version }}\"/" Jist.podspec
+          # perl (portable across GNU/BSD) rewrites only the spec.version literal; the
+          # `:tag => "v#{spec.version}"` interpolation line is left untouched.
+          VERSION="${{ steps.version.outputs.version }}" perl -i -pe 's/(spec\.version\s*=\s*)"\d+\.\d+\.\d+"/${1}"$ENV{VERSION}"/' Jist.podspec
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Jist.podspec
