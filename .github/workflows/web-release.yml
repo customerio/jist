@@ -65,4 +65,5 @@ jobs:
           git add web/package.json web/package-lock.json
           git commit -m "web: bump version to ${{ steps.version.outputs.version }}"
           git tag "web-v${{ steps.version.outputs.version }}"
-          git push origin main "web-v${{ steps.version.outputs.version }}"
+          # --atomic: push branch + tag together or not at all (avoids an orphaned tag if main moved).
+          git push --atomic origin main "web-v${{ steps.version.outputs.version }}"

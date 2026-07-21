@@ -26,7 +26,10 @@ Release one platform at a time. The versions do not need to match across platfor
 Every release workflow takes the same input: a `patch` / `minor` / `major` bump plus a **dry run**
 toggle. You never type a version string — the workflow computes the next version from the platform's
 committed version (Web: `web/package.json`, iOS: `Jist.podspec`, Android: its version property),
-validates it (the tag is unused and the version is not already published), then tags and publishes.
+confirms the release tag is not already in use, then tags and publishes.
+
+> **Prereleases are not supported.** The workflows publish only stable `X.Y.Z` versions (no
+> `-alpha`/`-beta`/`-rc`). A one-off prerelease would require a temporary change to the workflow.
 
 ## Web
 

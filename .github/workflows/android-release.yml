@@ -74,5 +74,7 @@ jobs:
           git add android/gradle.properties
           git commit -m "android: bump version to ${{ steps.version.outputs.version }}"
           git tag "${{ steps.version.outputs.tag }}"
-          git push origin main "${{ steps.version.outputs.tag }}"
+          # --atomic: push the branch and tag together or not at all. If main moved during the run,
+          # the whole push is rejected (rerun) rather than leaving an orphaned tag on an unpushed commit.
+          git push --atomic origin main "${{ steps.version.outputs.tag }}"
           echo "Pushed ${{ steps.version.outputs.tag }} — Publish Android will run for it." >> "$GITHUB_STEP_SUMMARY"
