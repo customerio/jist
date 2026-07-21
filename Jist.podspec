@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "Jist"
-  spec.version      = "0.1.0" # Don't modify this line - it's automatically updated
+  spec.version      = "0.0.0" # Automatically updated by the "Release iOS" workflow. Seeded at 0.0.0 — first release is a `minor` bump to 0.1.0.
   spec.summary      = "Customer.io Jist — native iOS renderer for JSON-template messages."
   spec.homepage     = "https://github.com/customerio/jist"
   spec.license      = { :type => "MIT", :file => "LICENSE" }

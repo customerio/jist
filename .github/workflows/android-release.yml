@@ -1,0 +1,78 @@
+name: Release Android
+
+# Manual only. Bumps the committed Android version (android/gradle.properties VERSION_NAME),
+# commits it, and tags android-vX.Y.Z. Pushing that tag (with SRE_GHACTIONS_TOKEN) triggers
+# "Publish Android". Nothing is published until this workflow is run manually from the Actions tab.
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Semantic version component to bump'
+        type: choice
+        required: true
+        options:
+          - 'patch'
+          - 'minor'
+          - 'major'
+        default: 'patch'
+      dry_run:
+        description: 'Dry run — show the calculated version and tag without committing or pushing'
+        type: boolean
+        default: false
+
+concurrency:
+  group: release-android
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main' && github.repository_owner == 'customerio'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.SRE_GHACTIONS_TOKEN }}
+          fetch-depth: 0
+
+      - name: Calculate next version
+        id: version
+        run: |
+          current=$(grep '^VERSION_NAME=' android/gradle.properties | cut -d= -f2)
+          IFS=. read -r MA MI PA <<< "$current"
+          case "${{ inputs.bump }}" in
+            major) MA=$((MA+1)); MI=0; PA=0;;
+            minor) MI=$((MI+1)); PA=0;;
+            patch) PA=$((PA+1));;
+          esac
+          next="$MA.$MI.$PA"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+          echo "tag=android-v$next" >> "$GITHUB_OUTPUT"
+          echo "Android $current -> $next (tag android-v$next)"
+
+      - name: Verify the tag does not already exist
+        run: |
+          if git rev-parse -q --verify "refs/tags/${{ steps.version.outputs.tag }}" >/dev/null; then
+            echo "::error::Tag ${{ steps.version.outputs.tag }} already exists. Choose a different bump."
+            exit 1
+          fi
+
+      - name: Dry run
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "DRY RUN — would release Android ${{ steps.version.outputs.version }} (from ${{ steps.version.outputs.current }})"
+          echo "DRY RUN — would commit VERSION_NAME and push tag ${{ steps.version.outputs.tag }}"
+
+      - name: Bump, commit, tag, and push
+        if: ${{ !inputs.dry_run }}
+        run: |
+          sed -i "s/^VERSION_NAME=.*/VERSION_NAME=${{ steps.version.outputs.version }}/" android/gradle.properties
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add android/gradle.properties
+          git commit -m "android: bump version to ${{ steps.version.outputs.version }}"
+          git tag "${{ steps.version.outputs.tag }}"
+          git push origin main "${{ steps.version.outputs.tag }}"
+          echo "Pushed ${{ steps.version.outputs.tag }} — Publish Android will run for it." >> "$GITHUB_STEP_SUMMARY"

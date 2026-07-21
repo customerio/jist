@@ -1,0 +1,82 @@
+name: Release iOS
+
+# Manual only. Bumps Jist.podspec spec.version, commits it, and tags vX.Y.Z. The tag is itself the
+# Swift Package Manager release; pushing it (with SRE_GHACTIONS_TOKEN) also triggers "Publish iOS"
+# for CocoaPods. Nothing is published until this workflow is run manually from the Actions tab.
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Semantic version component to bump'
+        type: choice
+        required: true
+        options:
+          - 'patch'
+          - 'minor'
+          - 'major'
+        default: 'patch'
+      dry_run:
+        description: 'Dry run — show the calculated version and tag without committing or pushing'
+        type: boolean
+        default: false
+
+concurrency:
+  group: release-ios
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main' && github.repository_owner == 'customerio'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.SRE_GHACTIONS_TOKEN }}
+          fetch-depth: 0
+
+      - name: Calculate next version
+        id: version
+        run: |
+          current=$(grep -E 'spec\.version[[:space:]]*=' Jist.podspec | sed -E 's/.*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')
+          IFS=. read -r MA MI PA <<< "$current"
+          case "${{ inputs.bump }}" in
+            major) MA=$((MA+1)); MI=0; PA=0;;
+            minor) MI=$((MI+1)); PA=0;;
+            patch) PA=$((PA+1));;
+          esac
+          next="$MA.$MI.$PA"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+          echo "tag=v$next" >> "$GITHUB_OUTPUT"
+          echo "iOS $current -> $next (tag v$next)"
+
+      - name: Verify the tag does not already exist
+        run: |
+          if git rev-parse -q --verify "refs/tags/${{ steps.version.outputs.tag }}" >/dev/null; then
+            echo "::error::Tag ${{ steps.version.outputs.tag }} already exists. Choose a different bump."
+            exit 1
+          fi
+
+      - name: Dry run
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "DRY RUN — would release iOS ${{ steps.version.outputs.version }} (from ${{ steps.version.outputs.current }})"
+          echo "DRY RUN — would commit Jist.podspec and push tag ${{ steps.version.outputs.tag }}"
+
+      - name: Bump, commit, tag, and push
+        if: ${{ !inputs.dry_run }}
+        run: |
+          sed -i -E "s/(spec\.version[[:space:]]*=[[:space:]]*)\"[0-9]+\.[0-9]+\.[0-9]+\"/\1\"${{ steps.version.outputs.version }}\"/" Jist.podspec
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Jist.podspec
+          git commit -m "ios: bump version to ${{ steps.version.outputs.version }}"
+          git tag "${{ steps.version.outputs.tag }}"
+          git push origin main "${{ steps.version.outputs.tag }}"
+          {
+            echo "Pushed ${{ steps.version.outputs.tag }}."
+            echo "- Swift Package Manager: the tag is the release (available now)."
+            echo "- CocoaPods: Publish iOS will run for this tag."
+          } >> "$GITHUB_STEP_SUMMARY"

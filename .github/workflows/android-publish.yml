@@ -1,47 +1,61 @@
-name: Publish Android (manual)
+name: Publish Android
 
-# Manual only for now — no automated release trigger yet (tracked as a follow-up).
-# Publishes io.customer.android:jist to the Sonatype Central Portal staging repository.
-#
-# By default the run only *closes* (validates) the staging repository so it can be eyeballed on
-# central.sonatype.com before going live. Tick `release` to also release it to Maven Central.
+# Triggered only by an android-vX.Y.Z tag (created by "Release Android"). Publishes
+# io.customer.android:jist to Maven Central and releases the staging repository. This never
+# runs on a push/merge to main — only on a release tag — so merging a PR publishes nothing.
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to publish (e.g. 0.1.0-alpha01)"
-        required: true
-      release:
-        description: "Release to Maven Central (unticked = close + validate staging only)"
-        type: boolean
-        default: false
+  push:
+    tags:
+      - 'android-v*'
+
+concurrency:
+  group: publish-android
+  cancel-in-progress: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: android
     steps:
       - uses: actions/checkout@v5
 
+      - name: Derive version from tag
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#android-v}"
+          echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::Tag $GITHUB_REF_NAME is not android-vX.Y.Z"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the tag matches the committed version
+        run: |
+          committed=$(grep '^VERSION_NAME=' gradle.properties | cut -d= -f2)
+          if [ "$committed" != "${{ steps.version.outputs.version }}" ]; then
+            echo "::error::Tag version ${{ steps.version.outputs.version }} != committed VERSION_NAME $committed"
+            exit 1
+          fi
+
       - name: Setup Android
         uses: customerio/mobile-ci-tools/github-actions/android/setup-android/v1@main
 
-      - name: Publish to Sonatype (staging)
-        # Secret names match customerio-android / mobile-ci-tools; mapped here to the env vars the
-        # shared io.customer.android.publish-* plugin reads.
+      - name: Publish and release to Maven Central
+        # The shared io.customer.android.publish-module plugin reads MODULE_VERSION and the
+        # signing/credentials env below. closeAndRelease promotes the staging repo to Maven Central.
         env:
-          MODULE_VERSION: ${{ inputs.version }}
+          MODULE_VERSION: ${{ steps.version.outputs.version }}
           OSSRH_USERNAME: ${{ secrets.GRADLE_PUBLISH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.GRADLE_PUBLISH_PASSWORD }}
           SIGNING_KEY_ID: ${{ secrets.GRADLE_SIGNING_KEYID }}
           SIGNING_PASSWORD: ${{ secrets.GRADLE_SIGNING_PASSPHRASE }}
           SIGNING_KEY: ${{ secrets.GRADLE_SIGNING_PRIVATE_KEY }}
           SONATYPE_STAGING_PROFILE_ID: ${{ secrets.SONATYPE_STAGING_PROFILE_ID }}
-          # closeAndRelease pushes to Maven Central; close-only just validates the staging repo.
-          CLOSE_TASK: ${{ inputs.release && 'closeAndReleaseSonatypeStagingRepository' || 'closeSonatypeStagingRepository' }}
         run: >-
           ./gradlew :jist:publishReleasePublicationToSonatypeRepository
           --max-workers 1
-          "$CLOSE_TASK"
+          closeAndReleaseSonatypeStagingRepository
+
+      - name: Summary
+        run: echo "Published io.customer.android:jist:${{ steps.version.outputs.version }} to Maven Central." >> "$GITHUB_STEP_SUMMARY"
