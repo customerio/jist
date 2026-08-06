@@ -15,7 +15,12 @@ concurrency:
 jobs:
   publish:
     if: github.repository_owner == 'customerio'
-    runs-on: macos-15
+    # macos-14 is retired on 2 Nov 2026 and macos-15 is the next image in line, so this moves
+    # ahead of it rather than waiting. Note the lint below uses the image's *default* Xcode,
+    # which this changes from 16.4 to 26.6 — `pod lib lint` may now warn that the podspec's
+    # ios.deployment_target of 13.0 is below Xcode 26's supported range. Warnings are already
+    # tolerated via --allow-warnings.
+    runs-on: macos-26
     permissions:
       contents: read
     steps:
